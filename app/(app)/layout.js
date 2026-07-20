@@ -3,6 +3,8 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useStore } from "@/lib/store";
 import Nav from "@/components/Nav";
+import ScrollReveal from "@/components/ScrollReveal";
+import PageTransition from "@/components/PageTransition";
 
 export default function AppLayout({ children }) {
   const { state, hydrated } = useStore();
@@ -16,8 +18,14 @@ export default function AppLayout({ children }) {
 
   return (
     <div className="iv-shell">
+      <div className="iv-shell-aurora" aria-hidden="true">
+        <span></span><span></span>
+      </div>
       <Nav />
-      <div className="iv-main">{children}</div>
+      <div className="iv-main">
+        <ScrollReveal />
+        <PageTransition>{children}</PageTransition>
+      </div>
     </div>
   );
 }

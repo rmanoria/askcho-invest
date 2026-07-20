@@ -9,6 +9,7 @@ import Topbar from "@/components/Topbar";
 import TickerTape from "@/components/TickerTape";
 import MarketBadge from "@/components/MarketBadge";
 import Sparkline from "@/components/Sparkline";
+import FlashValue from "@/components/FlashValue";
 
 export default function SearchPage() {
   const { state, getAllLiveStocks, toggleWatch } = useStore();
@@ -51,7 +52,7 @@ export default function SearchPage() {
                     </td>
                     <td><MarketBadge market={s.market} /></td>
                     <td className="iv-sub">{s.sector}</td>
-                    <td className="mono">{formatMoney(s.price, s.currency)}</td>
+                    <td className="mono"><FlashValue value={s.price} render={() => formatMoney(s.price, s.currency)} /></td>
                     <td className={"iv-chg " + (s.changePct >= 0 ? "pos" : "neg")}>
                       {s.changePct >= 0 ? "+" : ""}{s.changePct.toFixed(2)}%
                     </td>

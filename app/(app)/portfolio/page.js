@@ -8,6 +8,8 @@ import { formatNGN, formatMoney, formatShares } from "@/lib/format";
 import Topbar from "@/components/Topbar";
 import TickerTape from "@/components/TickerTape";
 import OrdersTable from "@/components/OrdersTable";
+import FlashValue from "@/components/FlashValue";
+import CountUp from "@/components/CountUp";
 
 const COLORS = { NGX: "#ffffff", NYSE: "#8da2fb", NASDAQ: "#34d399", ETF: "#f4c463" };
 
@@ -38,7 +40,7 @@ export default function PortfolioPage() {
       <TickerTape />
       <div className="iv-view">
         <div className="iv-stat-strip">
-          <div className="iv-stat"><div className="iv-stat-label">Total value</div><div className="iv-stat-value mono">{formatNGN(totalValue + state.cash)}</div></div>
+          <div className="iv-stat"><div className="iv-stat-label">Total value</div><div className="iv-stat-value mono"><CountUp value={totalValue + state.cash} format={formatNGN} /></div></div>
           <div className="iv-stat"><div className="iv-stat-label">Holdings value</div><div className="iv-stat-value mono">{formatNGN(totalValue)}</div></div>
           <div className="iv-stat"><div className="iv-stat-label">All-time gain</div><div className="iv-stat-value mono">{(totalGain >= 0 ? "+" : "") + formatNGN(totalGain)}</div></div>
           <div className="iv-stat"><div className="iv-stat-label">Cash available</div><div className="iv-stat-value mono">{formatNGN(state.cash)}</div></div>
@@ -64,7 +66,7 @@ export default function PortfolioPage() {
                       </td>
                       <td className="mono">{formatShares(h.shares)}</td>
                       <td className="mono">{formatNGN(h.avgCostNGN)}</td>
-                      <td className="mono">{formatMoney(h.stock.price, h.stock.currency)}</td>
+                      <td className="mono"><FlashValue value={h.stock.price} render={() => formatMoney(h.stock.price, h.stock.currency)} /></td>
                       <td className="mono">{formatNGN(h.value)}</td>
                       <td className={"iv-chg " + (h.gain >= 0 ? "pos" : "neg")}>{h.gain >= 0 ? "+" : ""}{h.gainPct.toFixed(1)}%</td>
                       <td><button className="iv-btn-ghost xs" onClick={() => sell(h.ticker, h.shares)}>Sell all</button></td>

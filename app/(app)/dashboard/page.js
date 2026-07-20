@@ -3,18 +3,21 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowUpRight, ArrowDownRight, ChevronRight, Wallet, Star, Newspaper, BellRing, Repeat, Landmark } from "lucide-react";
 import { useStore } from "@/lib/store";
-import { toNGN, INDEXES, getMockNews } from "@/lib/stocks";
+import { toNGN, getMockNews } from "@/lib/stocks";
 import { formatMoney, formatNGN } from "@/lib/format";
 import Topbar from "@/components/Topbar";
 import TickerTape from "@/components/TickerTape";
 import PriceChart from "@/components/PriceChart";
 import Sparkline from "@/components/Sparkline";
 import MarketBadge from "@/components/MarketBadge";
+import FlashValue from "@/components/FlashValue";
+import CountUp from "@/components/CountUp";
 
 export default function DashboardPage() {
-  const { state, getAllLiveStocks } = useStore();
+  const { state, getAllLiveStocks, getLiveIndexes } = useStore();
   const router = useRouter();
   const stocks = getAllLiveStocks();
+  const indexes = getLiveIndexes();
 
   const enriched = state.portfolio.map((h) => {
     const s = stocks.find((x) => x.ticker === h.ticker);
@@ -44,10 +47,10 @@ export default function DashboardPage() {
       <TickerTape />
       <div className="iv-view">
         <div className="iv-stat-strip index">
-          {INDEXES.map((ix) => (
+          {indexes.map((ix) => (
             <div key={ix.name} className="iv-stat">
               <div className="iv-stat-label">{ix.name}</div>
-              <div className="iv-stat-value mono">{ix.value.toLocaleString(undefined, { maximumFractionDigits: 2 })}</div>
+              <div className="iv-stat-value mono"><FlashValue value={ix.value} render={() => ix.value.toLocaleString(undefined, { maximumFractionDigits: 2 })} /></div>
               <div className={"iv-chg " + (ix.changePct >= 0 ? "pos" : "neg")}>
                 {ix.changePct >= 0 ? <ArrowUpRight size={13} /> : <ArrowDownRight size={13} />}
                 {Math.abs(ix.changePct).toFixed(2)}%
@@ -67,7 +70,7 @@ export default function DashboardPage() {
                 <Link href={"/stock/" + spotlight.ticker} className="iv-btn-ghost sm">View details <ChevronRight size={14} /></Link>
               </div>
               <div className="iv-price-row">
-                <span className="iv-price mono">{formatMoney(spotlight.price, spotlight.currency)}</span>
+                <span className="iv-price mono"><FlashValue value={spotlight.price} render={() => formatMoney(spotlight.price, spotlight.currency)} /></span>
                 <span className={"iv-chg " + (spotlight.changePct >= 0 ? "pos" : "neg")}>
                   {spotlight.changePct >= 0 ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />}
                   {Math.abs(spotlight.changePct).toFixed(2)}%
@@ -92,7 +95,7 @@ export default function DashboardPage() {
           <div className="iv-col-stack">
             <div className="iv-panel">
               <div className="iv-panel-head"><h3>Portfolio</h3><Wallet size={16} className="muted" /></div>
-              <div className="iv-portfolio-total mono">{formatNGN(grand)}</div>
+              <div className="iv-portfolio-total mono"><CountUp value={grand} format={(v) => formatNGN(v)} /></div>
               <div className={"iv-chg " + (totalGain >= 0 ? "pos" : "neg")}>
                 {totalGain >= 0 ? <ArrowUpRight size={13} /> : <ArrowDownRight size={13} />}
                 {formatNGN(Math.abs(totalGain))} all time
@@ -156,7 +159,7 @@ export default function DashboardPage() {
                 <tr key={s.ticker} onClick={() => router.push("/stock/" + s.ticker)} style={{ cursor: "pointer" }}>
                   <td><span className="mono">{s.ticker}</span><span className="iv-sub"> {s.name}</span></td>
                   <td><MarketBadge market={s.market} /></td>
-                  <td className="mono">{formatMoney(s.price, s.currency)}</td>
+                  <td className="mono"><FlashValue value={s.price} render={() => formatMoney(s.price, s.currency)} /></td>
                   <td className={"iv-chg " + (s.changePct >= 0 ? "pos" : "neg")}>
                     {s.changePct >= 0 ? "+" : ""}{s.changePct.toFixed(2)}%
                   </td>

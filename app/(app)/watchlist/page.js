@@ -6,6 +6,7 @@ import { formatMoney } from "@/lib/format";
 import Topbar from "@/components/Topbar";
 import TickerTape from "@/components/TickerTape";
 import Sparkline from "@/components/Sparkline";
+import FlashValue from "@/components/FlashValue";
 
 export default function WatchlistPage() {
   const { state, getAllLiveStocks, toggleWatch } = useStore();
@@ -38,7 +39,7 @@ export default function WatchlistPage() {
                 </div>
                 <Sparkline data={s.history.slice(-30)} positive={s.changePct >= 0} />
                 <div className="iv-price-row">
-                  <span className="mono">{formatMoney(s.price, s.currency)}</span>
+                  <span className="mono"><FlashValue value={s.price} render={() => formatMoney(s.price, s.currency)} /></span>
                   <span className={"iv-chg " + (s.changePct >= 0 ? "pos" : "neg")}>
                     {s.changePct >= 0 ? "+" : ""}{s.changePct.toFixed(2)}%
                   </span>

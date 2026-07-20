@@ -11,6 +11,7 @@ import PriceChart from "@/components/PriceChart";
 import Stat from "@/components/Stat";
 import MarketBadge from "@/components/MarketBadge";
 import TradePanel from "@/components/TradePanel";
+import FlashValue from "@/components/FlashValue";
 
 export default function StockPage() {
   const { ticker } = useParams();
@@ -68,7 +69,7 @@ export default function StockPage() {
                 </button>
               </div>
               <div className="iv-price-row lg">
-                <span className="iv-price mono">{formatMoney(s.price, s.currency)}</span>
+                <span className="iv-price mono"><FlashValue value={s.price} render={() => formatMoney(s.price, s.currency)} /></span>
                 <span className={"iv-chg " + (s.changePct >= 0 ? "pos" : "neg")}>
                   {s.changePct >= 0 ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />}
                   {Math.abs(s.changePct).toFixed(2)}%
