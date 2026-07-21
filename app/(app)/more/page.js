@@ -7,7 +7,7 @@ import {
 import { useStore } from "@/lib/store";
 import Topbar from "@/components/Topbar";
 import TickerTape from "@/components/TickerTape";
-import LogoMark from "@/components/LogoMark";
+import Logo3D from "@/components/Logo3D";
 
 const GROUPS = [
   {
@@ -50,7 +50,7 @@ export default function MorePage() {
       <TickerTape />
       <div className="iv-view iv-more-view">
         <div className="iv-more-brand">
-          <LogoMark size={22} />
+          <Logo3D size={26} />
           <span className="iv-logo-text">ASKCHO <span className="muted">Invest</span></span>
         </div>
 
