@@ -23,23 +23,19 @@ button{ font-family:inherit; cursor:pointer; background:none; border:none; color
 input{ font-family:inherit; color:var(--text); }
 a{ color:inherit; text-decoration:none; }
 
-/* ---------- app shell: sidebar layout ---------- */
-.iv-shell{ display:flex; min-height:100vh; }
-.iv-sidebar{ width:220px; flex-shrink:0; border-right:1px solid var(--line); background:var(--bg-soft);
-  display:flex; flex-direction:column; padding:20px 14px; position:sticky; top:0; height:100vh; overflow-y:auto; }
+/* ---------- app shell (no sidebar \u2014 bottom nav on every screen size) ---------- */
+.iv-shell{ min-height:100vh; }
 .iv-logo-wrap{ display:flex; align-items:center; gap:9px; padding:6px 8px 22px; }
 .iv-logo-wrap.center{ justify-content:center; padding-bottom:0; }
 .iv-logo3d-wrap{ display:inline-flex; flex-shrink:0; border-radius:50%; transition:filter .35s ease,transform .5s cubic-bezier(.2,.8,.2,1); }
 .iv-logo3d-wrap canvas{ border-radius:50%; }
 .iv-logo-wrap:hover .iv-logo3d-wrap{ transform:scale(1.12); filter:drop-shadow(0 0 8px rgba(255,255,255,.4)); }
 .iv-logo-text{ font-family:var(--font-display); font-weight:600; font-size:14.5px; letter-spacing:.02em; }
-.iv-sidebar-links{ display:flex; flex-direction:column; gap:2px; flex:1; }
-.iv-sidebar-foot{ display:flex; flex-direction:column; gap:2px; border-top:1px solid var(--line); padding-top:10px; margin-top:10px; }
 .iv-nav-link{ display:flex; align-items:center; gap:10px; padding:9px 10px; border-radius:7px; font-size:13px; color:var(--muted); transition:background .15s,color .15s; text-align:left; width:100%; }
 .iv-nav-link:hover{ color:var(--text); background:var(--surface); }
 .iv-nav-link.active{ background:var(--surface); color:var(--text); border:1px solid var(--line); }
 
-.iv-main{ flex:1; min-width:0; display:flex; flex-direction:column; }
+.iv-main{ width:100%; display:flex; flex-direction:column; }
 .iv-topbar{ display:flex; align-items:center; justify-content:space-between; gap:16px; padding:16px 28px;
   border-bottom:1px solid var(--line); background:rgba(10,10,13,.92); backdrop-filter:blur(10px); position:sticky; top:0; z-index:30; flex-wrap:wrap; row-gap:10px; }
 .iv-page-title{ font-size:18px; }
@@ -261,10 +257,24 @@ a{ color:inherit; text-decoration:none; }
 .iv-holdings-tags{ display:flex; gap:5px; flex-wrap:wrap; margin-top:4px; }
 .iv-holdings-tag{ font-size:10.5px; padding:2px 7px; border-radius:5px; border:1px solid var(--line); color:var(--muted); font-family:var(--font-mono); }
 
-/* sidebar sections (desktop) */
-.iv-bottom-nav{ display:none; }
-.iv-sidebar-section{ margin-top:14px; }
-.iv-sidebar-section-label{ font-family:var(--font-mono); font-size:10px; color:var(--muted-2); letter-spacing:.08em; text-transform:uppercase; padding:0 10px; margin-bottom:4px; }
+/* bottom nav \u2014 shown at every screen size, mirrors investing.com's app pattern */
+.iv-view{ padding-bottom:110px; }
+.iv-bottom-nav{
+  display:flex; position:fixed; left:10px; right:10px; bottom:10px; z-index:50;
+  background:rgba(17,17,21,.94); backdrop-filter:blur(16px) saturate(140%);
+  border:1px solid var(--line); border-radius:20px; padding:7px 6px;
+  justify-content:space-between; box-shadow:0 16px 40px rgba(0,0,0,.55);
+  padding-bottom:calc(7px + env(safe-area-inset-bottom));
+}
+.iv-bottom-tab{ flex:1; display:flex; flex-direction:column; align-items:center; gap:3px; padding:7px 4px; border-radius:14px; color:var(--muted); font-size:10px; transition:background .15s,color .15s,transform .15s; }
+.iv-bottom-tab.active{ background:var(--bg-soft); color:var(--text); transform:translateY(-1px); }
+.iv-bottom-tab-icon{ display:flex; }
+.iv-bottom-tab-label{ font-weight:500; }
+@media(min-width:640px){
+  .iv-bottom-nav{ left:50%; right:auto; transform:translateX(-50%); width:440px; padding:8px 8px; }
+  .iv-bottom-tab{ padding:9px 6px; }
+  .iv-bottom-tab-label{ font-size:10.5px; }
+}
 
 /* more page (grouped list, mirrors investing.com's More screen) */
 .iv-more-view{ max-width:620px; }
@@ -279,31 +289,35 @@ a{ color:inherit; text-decoration:none; }
 .iv-more-signout{ background:var(--surface); border:1px solid var(--line); border-radius:12px; color:var(--neg); margin-top:6px; }
 .iv-more-signout:hover{ background:rgba(251,113,133,.06); }
 
+/* news page */
+.iv-news-view{ max-width:720px; }
+.iv-news-tabs{ display:flex; gap:22px; border-bottom:1px solid var(--line); margin-bottom:20px; overflow-x:auto; }
+.iv-news-tab{ position:relative; padding:0 0 12px; font-size:13.5px; color:var(--muted); white-space:nowrap; display:flex; align-items:center; gap:6px; }
+.iv-news-tab::after{ content:""; position:absolute; left:0; right:100%; bottom:-1px; height:2px; background:var(--text); transition:right .25s cubic-bezier(.2,.8,.2,1); }
+.iv-news-tab.active{ color:var(--text); font-weight:600; }
+.iv-news-tab.active::after{ right:0; }
+.iv-news-dot{ width:6px; height:6px; border-radius:50%; background:var(--neg); }
+.iv-news-hero{ cursor:pointer; }
+.iv-news-hero-image{ width:100%; height:180px; border-radius:9px; margin-bottom:16px;
+  background:linear-gradient(120deg,#1c1c22,#26262e,#1c1c22); background-size:220% 100%; animation:ivShimmerText 6s linear infinite; }
+.iv-news-hero-meta{ display:flex; align-items:center; gap:8px; margin-bottom:10px; }
+.iv-news-hero h3{ font-size:17px; line-height:1.4; margin-bottom:8px; }
+.iv-news-list{ display:flex; flex-direction:column; }
+.iv-news-row{ display:flex; gap:14px; padding:16px 0; border-bottom:1px solid var(--line); cursor:pointer; }
+.iv-news-row:last-child{ border-bottom:none; }
+.iv-news-thumb{ width:76px; height:56px; border-radius:7px; flex-shrink:0;
+  background:linear-gradient(135deg,#1c1c22,#242430); }
+.iv-news-row-body{ flex:1; min-width:0; }
+.iv-news-headline{ font-size:13.5px; line-height:1.5; margin-bottom:6px; }
+
 @media(max-width:980px){
   .iv-grid-2{ grid-template-columns:1fr; }
 }
 @media(max-width:860px){
-  .iv-shell{ flex-direction:column; }
-  .iv-sidebar{ display:none; }
-  .iv-view{ padding:18px; padding-bottom:100px; }
+  .iv-view{ padding:18px; padding-bottom:110px; }
   .iv-topbar{ padding:12px 16px; }
   .iv-user-chip{ display:none; }
   .iv-notif-panel{ width:min(300px, calc(100vw - 32px)); right:-8px; }
-
-  .iv-bottom-nav{
-    display:flex; position:fixed; left:10px; right:10px; bottom:10px; z-index:50;
-    background:rgba(17,17,21,.94); backdrop-filter:blur(16px) saturate(140%);
-    border:1px solid var(--line); border-radius:20px; padding:7px 6px;
-    justify-content:space-between; box-shadow:0 16px 40px rgba(0,0,0,.55);
-    padding-bottom:calc(7px + env(safe-area-inset-bottom));
-  }
-  .iv-bottom-tab{ flex:1; display:flex; flex-direction:column; align-items:center; gap:3px; padding:7px 2px; border-radius:14px; color:var(--muted); font-size:10px; transition:background .15s,color .15s,transform .15s; }
-  .iv-bottom-tab.active{ background:var(--bg-soft); color:var(--text); transform:translateY(-1px); }
-  .iv-bottom-tab-icon{ display:flex; }
-  .iv-bottom-tab-label{ font-weight:500; }
-}
-@media(min-width:861px){
-  .iv-bottom-nav{ display:none; }
 }
 @media(max-width:560px){
   .iv-form-row{ flex-direction:column; align-items:stretch; }
@@ -337,7 +351,6 @@ a{ color:inherit; text-decoration:none; }
 @keyframes ivAuroraA{ 0%,100%{transform:translate(0,0);} 50%{transform:translate(-5%,6%);} }
 @keyframes ivAuroraB{ 0%,100%{transform:translate(0,0);} 50%{transform:translate(6%,-6%);} }
 .iv-main{ position:relative; z-index:1; }
-.iv-sidebar{ z-index:1; }
 @media(prefers-reduced-motion:reduce){ .iv-shell-aurora span{ animation:none; } }
 
 /* reveal-on-scroll, progressively enhanced (content is visible by default without JS) */

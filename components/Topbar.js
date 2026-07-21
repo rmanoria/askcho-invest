@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
-import { User as UserIcon } from "lucide-react";
+import Link from "next/link";
+import { User as UserIcon, Search } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { formatNGN } from "@/lib/format";
 import NotificationBell from "./NotificationBell";
@@ -17,6 +18,7 @@ export default function Topbar({ title }) {
       <div className="iv-topbar-right">
         <div className="iv-pill"><span className="dot" /><span className="iv-pill-label">Markets live</span></div>
         <button className="iv-cash-chip mono" onClick={() => setFundingOpen(true)}><CountUp value={state.cash} format={formatNGN} /></button>
+        <Link href="/search" className="iv-icon-btn" aria-label="Search"><Search size={16} /></Link>
         <NotificationBell />
         <div className="iv-user-chip"><UserIcon size={14} /> {state.user && state.user.name}</div>
       </div>

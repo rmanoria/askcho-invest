@@ -1,15 +1,17 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Search, Briefcase, Star, Menu } from "lucide-react";
+import { LayoutDashboard, Newspaper, Briefcase, Star, Menu } from "lucide-react";
 
 const TABS = [
   { href: "/dashboard", label: "Markets", icon: LayoutDashboard },
-  { href: "/search", label: "Search", icon: Search },
+  { href: "/news", label: "News", icon: Newspaper },
   { href: "/portfolio", label: "Portfolio", icon: Briefcase },
   { href: "/watchlist", label: "Watchlist", icon: Star },
   { href: "/more", label: "More", icon: Menu }
 ];
+
+const MORE_ROUTES = ["/more", "/search", "/orders", "/alerts", "/fixed-income", "/auto-invest", "/community", "/learn", "/settings", "/wallet", "/stock"];
 
 export default function BottomNav() {
   const pathname = usePathname();
@@ -31,5 +33,3 @@ export default function BottomNav() {
     </nav>
   );
 }
-
-const MORE_ROUTES = ["/more", "/orders", "/alerts", "/fixed-income", "/auto-invest", "/community", "/learn", "/settings", "/wallet"];
