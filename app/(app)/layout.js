@@ -3,6 +3,7 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useStore } from "@/lib/store";
 import Nav from "@/components/Nav";
+import BottomNav from "@/components/BottomNav";
 import ScrollReveal from "@/components/ScrollReveal";
 import PageTransition from "@/components/PageTransition";
 
@@ -26,6 +27,7 @@ export default function AppLayout({ children }) {
         <ScrollReveal />
         <PageTransition>{children}</PageTransition>
       </div>
+      <BottomNav />
     </div>
   );
 }
