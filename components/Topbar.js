@@ -16,7 +16,7 @@ export default function Topbar({ title }) {
   return (
     <div className="iv-topbar">
       <Link href="/dashboard" className="iv-topbar-brand" aria-label="ASKCHO Invest home">
-        <Logo3D size={26} />
+        <Logo3D size={40} />
         <h1 className="iv-page-title">{title}</h1>
       </Link>
       <div className="iv-topbar-right">

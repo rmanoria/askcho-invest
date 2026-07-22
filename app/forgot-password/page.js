@@ -17,7 +17,7 @@ export default function ForgotPasswordPage() {
       <div className="iv-auth-aurora" />
       <div className="iv-auth-card">
         <div className="iv-logo-wrap center">
-          <Logo3D size={32} />
+          <Logo3D size={42} />
           <span className="iv-logo-text">ASKCHO <span className="muted">Invest</span></span>
         </div>
         {!sent ? (

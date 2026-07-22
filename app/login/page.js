@@ -27,7 +27,7 @@ export default function LoginPage() {
       <div className="iv-auth-aurora" />
       <div className="iv-auth-card">
         <div className="iv-logo-wrap center">
-          <Logo3D size={32} />
+          <Logo3D size={42} />
           <span className="iv-logo-text">ASKCHO <span className="muted">Invest</span></span>
         </div>
         <div className="iv-eyebrow center">NGX &middot; NYSE &middot; NASDAQ &middot; ETFs</div>

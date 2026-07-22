@@ -50,7 +50,7 @@ export default function MorePage() {
       <TickerTape />
       <div className="iv-view iv-more-view">
         <div className="iv-more-brand">
-          <Logo3D size={26} />
+          <Logo3D size={38} />
           <span className="iv-logo-text">ASKCHO <span className="muted">Invest</span></span>
         </div>
 
