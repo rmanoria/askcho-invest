@@ -7,6 +7,7 @@ import { formatNGN } from "@/lib/format";
 import NotificationBell from "./NotificationBell";
 import FundingModal from "./FundingModal";
 import CountUp from "./CountUp";
+import Logo3D from "./Logo3D";
 
 export default function Topbar({ title }) {
   const { state } = useStore();
@@ -14,7 +15,10 @@ export default function Topbar({ title }) {
 
   return (
     <div className="iv-topbar">
-      <h1 className="iv-page-title">{title}</h1>
+      <Link href="/dashboard" className="iv-topbar-brand" aria-label="ASKCHO Invest home">
+        <Logo3D size={26} />
+        <h1 className="iv-page-title">{title}</h1>
+      </Link>
       <div className="iv-topbar-right">
         <div className="iv-pill"><span className="dot" /><span className="iv-pill-label">Markets live</span></div>
         <button className="iv-cash-chip mono" onClick={() => setFundingOpen(true)}><CountUp value={state.cash} format={formatNGN} /></button>
