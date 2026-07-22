@@ -42,7 +42,7 @@ export default function NewsPage() {
 
         {hero && (
           <div className="iv-panel iv-news-hero" onClick={() => router.push("/stock/" + hero.ticker)}>
-            <div className="iv-news-hero-image" />
+            <div className="iv-news-hero-image" style={{ backgroundImage: "url(" + hero.image + ")" }} />
             <div className="iv-news-hero-meta">
               <MarketBadge market={hero.market} />
               <span className="mono muted">{hero.ticker}</span>
@@ -55,7 +55,7 @@ export default function NewsPage() {
         <div className="iv-news-list">
           {rest.slice(0, 24).map((n) => (
             <div key={n.id} className="iv-news-row" onClick={() => router.push("/stock/" + n.ticker)}>
-              <div className="iv-news-thumb" />
+              <div className="iv-news-thumb" style={{ backgroundImage: "url(" + n.image + ")" }} />
               <div className="iv-news-row-body">
                 <div className="iv-news-headline"><span className="mono muted">{n.ticker}</span> {n.headline}</div>
                 <div className="iv-sub">{n.source} &middot; {n.hoursAgo}h ago</div>
