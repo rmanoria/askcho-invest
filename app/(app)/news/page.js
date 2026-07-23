@@ -13,6 +13,12 @@ const TABS = [
   { id: "global", label: "Global" }
 ];
 
+function groupLabel(hoursAgo) {
+  if (hoursAgo <= 24) return "Today";
+  if (hoursAgo <= 48) return "Yesterday";
+  return "This week";
+}
+
 export default function NewsPage() {
   const [tab, setTab] = useState("featured");
   const router = useRouter();
@@ -25,6 +31,14 @@ export default function NewsPage() {
 
   const [hero, ...rest] = filtered.length ? filtered : all;
   const breakingCount = all.filter((n) => n.breaking).length;
+
+  const groups = [];
+  rest.slice(0, 30).forEach((n) => {
+    const label = groupLabel(n.hoursAgo);
+    let group = groups.find((g) => g.label === label);
+    if (!group) { group = { label, items: [] }; groups.push(group); }
+    group.items.push(n);
+  });
 
   return (
     <>
@@ -52,18 +66,23 @@ export default function NewsPage() {
           </div>
         )}
 
-        <div className="iv-news-list">
-          {rest.slice(0, 24).map((n) => (
-            <div key={n.id} className="iv-news-row" onClick={() => router.push("/stock/" + n.ticker)}>
-              <div className="iv-news-thumb" style={{ backgroundImage: "url(" + n.image + ")" }} />
-              <div className="iv-news-row-body">
-                <div className="iv-news-headline"><span className="mono muted">{n.ticker}</span> {n.headline}</div>
-                <div className="iv-sub">{n.source} &middot; {n.hoursAgo}h ago</div>
-              </div>
+        {groups.map((group) => (
+          <div key={group.label} className="iv-news-group">
+            <div className="iv-eyebrow">{group.label.toUpperCase()}</div>
+            <div className="iv-news-list">
+              {group.items.map((n) => (
+                <div key={n.id} className="iv-news-row" onClick={() => router.push("/stock/" + n.ticker)}>
+                  <div className="iv-news-thumb" style={{ backgroundImage: "url(" + n.image + ")" }} />
+                  <div className="iv-news-row-body">
+                    <div className="iv-news-headline"><span className="mono muted">{n.ticker}</span> {n.headline}</div>
+                    <div className="iv-sub">{n.source} &middot; {n.hoursAgo}h ago</div>
+                  </div>
+                </div>
+              ))}
             </div>
-          ))}
-          {rest.length === 0 && !hero && <p className="iv-empty-sm">No news in this category right now.</p>}
-        </div>
+          </div>
+        ))}
+        {groups.length === 0 && !hero && <p className="iv-empty-sm">No news in this category right now.</p>}
       </div>
     </>
   );

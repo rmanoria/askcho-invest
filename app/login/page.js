@@ -32,7 +32,7 @@ export default function LoginPage() {
         </div>
         <div className="iv-eyebrow center">NGX &middot; NYSE &middot; NASDAQ &middot; ETFs</div>
         <h1 className="iv-auth-title">Welcome back</h1>
-        <p className="iv-auth-sub">Sign in to track your portfolio and markets.</p>
+        <p className="iv-auth-sub">Sign in to track markets, news, and your watchlist.</p>
         <form onSubmit={submit}>
           <label className="iv-field">
             <span>Email</span>

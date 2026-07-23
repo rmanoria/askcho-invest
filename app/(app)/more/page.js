@@ -1,9 +1,6 @@
 "use client";
 import Link from "next/link";
-import {
-  ListOrdered, BellRing, Briefcase, Landmark, Repeat, Users, GraduationCap,
-  Settings, Wallet, LogOut, ChevronRight
-} from "lucide-react";
+import { BellRing, Users, Sparkles, Settings, LogOut, ChevronRight } from "lucide-react";
 import { useStore } from "@/lib/store";
 import Topbar from "@/components/Topbar";
 import TickerTape from "@/components/TickerTape";
@@ -13,24 +10,14 @@ const GROUPS = [
   {
     title: "Track",
     items: [
-      { href: "/orders", label: "Orders", icon: ListOrdered },
-      { href: "/alerts", label: "Alerts", icon: BellRing },
-      { href: "/portfolio", label: "My Holdings", icon: Briefcase }
+      { href: "/alerts", label: "Alerts", icon: BellRing }
     ]
   },
   {
-    title: "Grow",
-    items: [
-      { href: "/fixed-income", label: "Fixed Income", icon: Landmark },
-      { href: "/auto-invest", label: "Auto-Invest", icon: Repeat },
-      { href: "/wallet", label: "Wallet", icon: Wallet }
-    ]
-  },
-  {
-    title: "Community & Learning",
+    title: "Community & AI",
     items: [
       { href: "/community", label: "Community", icon: Users },
-      { href: "/learn", label: "AI Investment Tutor", icon: GraduationCap }
+      { href: "/learn", label: "Askcho Investment AI", icon: Sparkles }
     ]
   },
   {

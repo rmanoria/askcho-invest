@@ -4,13 +4,12 @@ import { useParams, useRouter } from "next/navigation";
 import { ArrowLeft, ArrowUpRight, ArrowDownRight, Star, Newspaper, BellRing } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { getMockNews } from "@/lib/stocks";
-import { formatMoney, formatCompact, formatNGN } from "@/lib/format";
+import { formatMoney, formatCompact } from "@/lib/format";
 import Topbar from "@/components/Topbar";
 import TickerTape from "@/components/TickerTape";
 import PriceChart from "@/components/PriceChart";
 import Stat from "@/components/Stat";
 import MarketBadge from "@/components/MarketBadge";
-import TradePanel from "@/components/TradePanel";
 import FlashValue from "@/components/FlashValue";
 
 export default function StockPage() {
@@ -31,7 +30,6 @@ export default function StockPage() {
   }
 
   const watched = state.watchlist.includes(s.ticker);
-  const holding = state.portfolio.find((h) => h.ticker === s.ticker);
   const last5 = s.history.slice(-5).map((p) => p.price);
   const dayHigh = Math.max(...last5);
   const dayLow = Math.min(...last5);
@@ -84,12 +82,6 @@ export default function StockPage() {
                 <Stat label="P/E ratio" value={s.peRatio} info="Price divided by earnings per share. Compares a stock's price to its profit." />
                 <Stat label="Market cap" value={formatCompact(s.marketCap, s.currency)} info="Share price times total shares outstanding \u2014 a measure of company size." />
               </div>
-
-              {holding && (
-                <div className="iv-holding-note">
-                  You own <span className="mono">{holding.shares}</span> shares &middot; avg cost {formatNGN(holding.avgCostNGN)}
-                </div>
-              )}
             </div>
 
             <div className="iv-panel">
@@ -106,11 +98,6 @@ export default function StockPage() {
           </div>
 
           <div className="iv-col-stack">
-            <div className="iv-panel">
-              <div className="iv-panel-head"><h3>Trade</h3></div>
-              <TradePanel stock={s} />
-            </div>
-
             <div className="iv-panel">
               <div className="iv-panel-head"><h3>Price alert</h3><BellRing size={16} className="muted" /></div>
               <form onSubmit={submitAlert}>
@@ -130,6 +117,10 @@ export default function StockPage() {
                 <button type="submit" className="iv-btn-primary full">Set alert</button>
               </form>
             </div>
+
+            <button className={"iv-btn-ghost full" + (watched ? "" : "")} onClick={() => toggleWatch(s.ticker)} style={{ marginTop: 0 }}>
+              <Star size={15} fill={watched ? "#ffffff" : "none"} /> {watched ? "Remove from watchlist" : "Add to watchlist"}
+            </button>
           </div>
         </div>
       </div>
