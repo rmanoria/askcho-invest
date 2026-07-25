@@ -27,7 +27,7 @@ export default function SearchPage() {
 
   return (
     <>
-      <Topbar title="Search" />
+      <Topbar />
       <TickerTape />
       <div className="iv-view">
         <div className="iv-search-bar">
@@ -41,22 +41,22 @@ export default function SearchPage() {
         </div>
         <div className="iv-panel">
           <div className="iv-table-wrap"><table className="iv-table">
-            <thead><tr><th>Stock</th><th>Market</th><th>Sector</th><th>Price</th><th>Change</th><th>Trend</th><th /></tr></thead>
+            <thead><tr><th>Stock</th><th className="iv-col-hide-mobile">Market</th><th className="iv-col-hide-mobile">Sector</th><th>Price</th><th>Change</th><th className="iv-col-hide-mobile">Trend</th><th /></tr></thead>
             <tbody>
               {filtered.map((s) => {
                 const watched = state.watchlist.includes(s.ticker);
                 return (
                   <tr key={s.ticker}>
                     <td onClick={() => router.push("/stock/" + s.ticker)} style={{ cursor: "pointer" }}>
-                      <span className="mono">{s.ticker}</span><span className="iv-sub"> {s.name}</span>
+                      <div className="mono">{s.ticker}</div><div className="iv-sub">{s.name}</div>
                     </td>
-                    <td><MarketBadge market={s.market} /></td>
-                    <td className="iv-sub">{s.sector}</td>
+                    <td className="iv-col-hide-mobile"><MarketBadge market={s.market} /></td>
+                    <td className="iv-sub iv-col-hide-mobile">{s.sector}</td>
                     <td className="mono"><FlashValue value={s.price} render={() => formatMoney(s.price, s.currency)} /></td>
                     <td className={"iv-chg " + (s.changePct >= 0 ? "pos" : "neg")}>
                       {s.changePct >= 0 ? "+" : ""}{s.changePct.toFixed(2)}%
                     </td>
-                    <td><Sparkline data={s.history.slice(-14)} positive={s.changePct >= 0} /></td>
+                    <td className="iv-col-hide-mobile"><Sparkline data={s.history.slice(-14)} positive={s.changePct >= 0} /></td>
                     <td>
                       <button className="iv-star-btn" onClick={() => toggleWatch(s.ticker)} aria-label="Toggle watchlist">
                         <Star size={15} fill={watched ? "#ffffff" : "none"} />

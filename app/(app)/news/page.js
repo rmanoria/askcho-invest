@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { getAllNews } from "@/lib/news";
+import { MARKETS } from "@/lib/stocks";
 import Topbar from "@/components/Topbar";
 import TickerTape from "@/components/TickerTape";
 import MarketBadge from "@/components/MarketBadge";
@@ -21,19 +22,22 @@ function groupLabel(hoursAgo) {
 
 export default function NewsPage() {
   const [tab, setTab] = useState("featured");
+  const [marketFilter, setMarketFilter] = useState("All");
   const router = useRouter();
   const all = getAllNews();
 
-  const filtered =
+  let filtered =
     tab === "featured" ? all :
     tab === "breaking" ? all.filter((n) => n.breaking) :
     all.filter((n) => n.category === tab);
+
+  if (marketFilter !== "All") filtered = filtered.filter((n) => n.market === marketFilter);
 
   const [hero, ...rest] = filtered.length ? filtered : all;
   const breakingCount = all.filter((n) => n.breaking).length;
 
   const groups = [];
-  rest.slice(0, 30).forEach((n) => {
+  rest.slice(0, 40).forEach((n) => {
     const label = groupLabel(n.hoursAgo);
     let group = groups.find((g) => g.label === label);
     if (!group) { group = { label, items: [] }; groups.push(group); }
@@ -42,7 +46,7 @@ export default function NewsPage() {
 
   return (
     <>
-      <Topbar title="News" />
+      <Topbar />
       <TickerTape />
       <div className="iv-view iv-news-view">
         <div className="iv-news-tabs">
@@ -52,6 +56,16 @@ export default function NewsPage() {
               {t.id === "breaking" && breakingCount > 0 && <span className="iv-news-dot" />}
             </button>
           ))}
+        </div>
+
+        <div className="iv-form-row" style={{ marginBottom: 20 }}>
+          <label className="iv-field" style={{ maxWidth: 220 }}>
+            <span>Market</span>
+            <select value={marketFilter} onChange={(e) => setMarketFilter(e.target.value)}>
+              <option value="All">All</option>
+              {MARKETS.map((m) => <option key={m} value={m}>{m}</option>)}
+            </select>
+          </label>
         </div>
 
         {hero && (
@@ -82,7 +96,7 @@ export default function NewsPage() {
             </div>
           </div>
         ))}
-        {groups.length === 0 && !hero && <p className="iv-empty-sm">No news in this category right now.</p>}
+        {groups.length === 0 && !hero && <p className="iv-empty-sm">No news matches these filters.</p>}
       </div>
     </>
   );

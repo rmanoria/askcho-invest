@@ -1,9 +1,9 @@
 "use client";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowUpRight, ArrowDownRight, ChevronRight, Newspaper, TrendingDown, TrendingUp, CalendarDays } from "lucide-react";
+import { ArrowUpRight, ArrowDownRight, ChevronRight, TrendingDown, TrendingUp, CalendarDays } from "lucide-react";
 import { useStore } from "@/lib/store";
-import { getMockNews } from "@/lib/stocks";
+import { getAllNews } from "@/lib/news";
 import { ALL_INDICES, getCalendarEvents } from "@/lib/markets";
 import { formatMoney, formatDate } from "@/lib/format";
 import Topbar from "@/components/Topbar";
@@ -18,13 +18,12 @@ export default function DashboardPage() {
   const indexes = getLiveIndexes();
   const summaryIndexes = [...indexes, ...ALL_INDICES.slice(3, 6)];
 
+  const news = getAllNews();
+  const [hero, ...restNews] = news;
+  const newsCards = restNews.slice(0, 3);
+
   const sortedByChange = [...stocks].sort((a, b) => Math.abs(b.changePct) - Math.abs(a.changePct));
   const movers = sortedByChange.slice(0, 6);
-
-  const newsSources = sortedByChange.slice(0, 3);
-  const newsPreview = newsSources
-    .flatMap((s) => getMockNews(s.ticker).slice(0, 1).map((n) => ({ ...n, ticker: s.ticker })))
-    .slice(0, 4);
 
   const equities = stocks.filter((s) => s.market !== "ETF");
   const undervalued = [...equities].sort((a, b) => a.peRatio - b.peRatio).slice(0, 5);
@@ -34,25 +33,34 @@ export default function DashboardPage() {
 
   return (
     <>
-      <Topbar title="Home" />
+      <Topbar />
       <TickerTape />
       <div className="iv-view">
 
-        {/* News */}
-        <div className="iv-panel">
-          <div className="iv-panel-head">
-            <h3>News</h3>
-            <Link href="/news" className="iv-btn-ghost sm">View all <ChevronRight size={14} /></Link>
+        {/* Featured hero + news grid */}
+        {hero && (
+          <div className="iv-panel iv-home-hero" onClick={() => router.push("/stock/" + hero.ticker)}>
+            <div className="iv-home-hero-image" style={{ backgroundImage: "url(" + hero.image + ")" }} />
+            <div className="iv-home-hero-body">
+              <Link href="/news" className="iv-home-hero-label" onClick={(e) => e.stopPropagation()}>News <ChevronRight size={14} /></Link>
+              <h2>{hero.headline}</h2>
+              <div className="iv-sub">{hero.source} &middot; {hero.hoursAgo}h ago</div>
+            </div>
           </div>
-          <div className="iv-notif-list">
-            {newsPreview.map((n) => (
-              <div key={n.id} className="iv-notif-item" style={{ cursor: "pointer" }} onClick={() => router.push("/stock/" + n.ticker)}>
-                <div><span className="mono muted" style={{ marginRight: 6 }}>{n.ticker}</span>{n.headline}</div>
-                <div className="iv-sub">{n.source} &middot; {n.hoursAgo}h ago</div>
+        )}
+        {newsCards.length > 0 && (
+          <div className="iv-home-news-grid">
+            {newsCards.map((n) => (
+              <div key={n.id} className="iv-panel iv-home-news-card" onClick={() => router.push("/stock/" + n.ticker)}>
+                <div className="iv-home-news-card-image" style={{ backgroundImage: "url(" + n.image + ")" }} />
+                <div className="iv-home-news-card-body">
+                  <div className="iv-news-headline">{n.headline}</div>
+                  <div className="iv-sub">{n.source} &middot; {n.hoursAgo}h ago</div>
+                </div>
               </div>
             ))}
           </div>
-        </div>
+        )}
 
         {/* Markets summary */}
         <div className="iv-panel">
@@ -75,10 +83,13 @@ export default function DashboardPage() {
         </div>
 
         {/* Most undervalued / overvalued */}
+        <div className="iv-panel-head" style={{ marginBottom: 12 }}>
+          <h3>Most undervalued &amp; overvalued stocks</h3>
+        </div>
         <div className="iv-grid-2">
           <div className="iv-panel">
             <div className="iv-panel-head"><h3>Most undervalued</h3><TrendingDown size={16} className="muted" /></div>
-            <table className="iv-table">
+            <div className="iv-table-wrap"><table className="iv-table">
               <thead><tr><th>Stock</th><th>P/E</th><th>Price</th></tr></thead>
               <tbody>
                 {undervalued.map((s) => (
@@ -89,11 +100,11 @@ export default function DashboardPage() {
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </table></div>
           </div>
           <div className="iv-panel">
             <div className="iv-panel-head"><h3>Most overvalued</h3><TrendingUp size={16} className="muted" /></div>
-            <table className="iv-table">
+            <div className="iv-table-wrap"><table className="iv-table">
               <thead><tr><th>Stock</th><th>P/E</th><th>Price</th></tr></thead>
               <tbody>
                 {overvalued.map((s) => (
@@ -104,7 +115,7 @@ export default function DashboardPage() {
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </table></div>
           </div>
         </div>
 
@@ -126,14 +137,14 @@ export default function DashboardPage() {
 
         {/* Top movers */}
         <div className="iv-panel">
-          <div className="iv-panel-head"><h3>Top movers</h3><Newspaper size={16} className="muted" style={{ visibility: "hidden" }} /></div>
+          <div className="iv-panel-head"><h3>Top movers</h3></div>
           <div className="iv-table-wrap"><table className="iv-table">
-            <thead><tr><th>Stock</th><th>Market</th><th>Price</th><th>Change</th><th /></tr></thead>
+            <thead><tr><th>Stock</th><th className="iv-col-hide-mobile">Market</th><th>Price</th><th>Change</th><th /></tr></thead>
             <tbody>
               {movers.map((s) => (
                 <tr key={s.ticker} onClick={() => router.push("/stock/" + s.ticker)} style={{ cursor: "pointer" }}>
                   <td><span className="mono">{s.ticker}</span><span className="iv-sub"> {s.name}</span></td>
-                  <td><MarketBadge market={s.market} /></td>
+                  <td className="iv-col-hide-mobile"><MarketBadge market={s.market} /></td>
                   <td className="mono"><FlashValue value={s.price} render={() => formatMoney(s.price, s.currency)} /></td>
                   <td className={"iv-chg " + (s.changePct >= 0 ? "pos" : "neg")}>
                     {s.changePct >= 0 ? "+" : ""}{s.changePct.toFixed(2)}%

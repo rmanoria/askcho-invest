@@ -45,9 +45,15 @@ export default function MarketsPage() {
     setTypeFilter("All");
   }
 
+  const avgChange = filtered.length ? filtered.reduce((a, i) => a + i.changePct, 0) / filtered.length : 0;
+  const best = filtered.length ? [...filtered].sort((a, b) => b.changePct - a.changePct)[0] : null;
+  const worst = filtered.length ? [...filtered].sort((a, b) => a.changePct - b.changePct)[0] : null;
+  const categoryLabel = MARKET_CATEGORIES.find((c) => c.id === category).label;
+  const nameOf = (item) => (isIndex ? item.name : item.ticker);
+
   return (
     <>
-      <Topbar title="Markets" />
+      <Topbar />
       <TickerTape />
       <div className="iv-view">
         <div className="iv-filter-pills">
@@ -56,6 +62,32 @@ export default function MarketsPage() {
               {c.label}
             </button>
           ))}
+        </div>
+
+        <div className="iv-panel">
+          <div className="iv-panel-head"><h3>Market insights</h3></div>
+          <p className="iv-sub" style={{ marginBottom: 16 }}>
+            {categoryLabel} are {avgChange >= 0 ? "broadly higher" : "broadly lower"} right now, averaging {avgChange >= 0 ? "+" : ""}{avgChange.toFixed(2)}% across {filtered.length} tracked instrument{filtered.length === 1 ? "" : "s"}
+            {typeFilter !== "All" ? " in " + typeFilter : ""}.
+          </p>
+          <div className="iv-stat-strip small" style={{ margin: 0 }}>
+            <div className="iv-stat">
+              <div className="iv-stat-label">Average change</div>
+              <div className={"iv-stat-value mono " + (avgChange >= 0 ? "iv-pos-text" : "iv-neg-text")}>{avgChange >= 0 ? "+" : ""}{avgChange.toFixed(2)}%</div>
+            </div>
+            {best && (
+              <div className="iv-stat">
+                <div className="iv-stat-label">Best performer</div>
+                <div className="iv-stat-value mono iv-pos-text">{nameOf(best)} {best.changePct >= 0 ? "+" : ""}{best.changePct.toFixed(2)}%</div>
+              </div>
+            )}
+            {worst && (
+              <div className="iv-stat">
+                <div className="iv-stat-label">Weakest performer</div>
+                <div className="iv-stat-value mono iv-neg-text">{nameOf(worst)} {worst.changePct.toFixed(2)}%</div>
+              </div>
+            )}
+          </div>
         </div>
 
         <div className="iv-form-row" style={{ marginBottom: 6 }}>
@@ -73,10 +105,10 @@ export default function MarketsPage() {
               <thead>
                 <tr>
                   <th>{isIndex ? "Index" : "Instrument"}</th>
-                  <th>{typeLabel}</th>
+                  <th className="iv-col-hide-mobile">{typeLabel}</th>
                   <th>{isIndex ? "Value" : "Price"}</th>
                   <th>Change</th>
-                  {!isIndex && <th>Trend</th>}
+                  {!isIndex && <th className="iv-col-hide-mobile">Trend</th>}
                 </tr>
               </thead>
               <tbody>
@@ -91,13 +123,13 @@ export default function MarketsPage() {
                         ? item.name
                         : (<><span className="mono">{item.ticker}</span><span className="iv-sub"> {item.name}</span></>)}
                     </td>
-                    <td className="iv-sub">{item[typeField]}</td>
+                    <td className="iv-sub iv-col-hide-mobile">{item[typeField]}</td>
                     <td className="mono">{itemPrice(item, isIndex)}</td>
                     <td className={"iv-chg " + (item.changePct >= 0 ? "pos" : "neg")}>
                       {item.changePct >= 0 ? <ArrowUpRight size={13} /> : <ArrowDownRight size={13} />}
                       {Math.abs(item.changePct).toFixed(2)}%
                     </td>
-                    {!isIndex && <td>{item.history && <Sparkline data={item.history.slice(-20)} positive={item.changePct >= 0} />}</td>}
+                    {!isIndex && <td className="iv-col-hide-mobile">{item.history && <Sparkline data={item.history.slice(-20)} positive={item.changePct >= 0} />}</td>}
                   </tr>
                 ))}
                 {filtered.length === 0 && (

@@ -1,17 +1,18 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, BarChart3, Newspaper, Star, Menu } from "lucide-react";
+import { Home, BarChart3, Newspaper, Sparkles, Star, Menu } from "lucide-react";
 
 const TABS = [
   { href: "/dashboard", label: "Home", icon: Home },
   { href: "/markets", label: "Markets", icon: BarChart3 },
   { href: "/news", label: "News", icon: Newspaper },
+  { href: "/learn", label: "AI", icon: Sparkles },
   { href: "/watchlist", label: "Watchlist", icon: Star },
   { href: "/more", label: "More", icon: Menu }
 ];
 
-const MORE_ROUTES = ["/more", "/search", "/alerts", "/community", "/learn", "/settings", "/stock"];
+const MORE_ROUTES = ["/more", "/search", "/alerts", "/community", "/settings", "/stock"];
 
 export default function BottomNav() {
   const pathname = usePathname();
@@ -25,7 +26,7 @@ export default function BottomNav() {
           : pathname === t.href;
         return (
           <Link key={t.href} href={t.href} className={"iv-bottom-tab" + (active ? " active" : "")}>
-            <span className="iv-bottom-tab-icon"><Icon size={20} /></span>
+            <span className="iv-bottom-tab-icon"><Icon size={18} /></span>
             <span className="iv-bottom-tab-label">{t.label}</span>
           </Link>
         );

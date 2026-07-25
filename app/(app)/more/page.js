@@ -36,10 +36,6 @@ export default function MorePage() {
       <Topbar title="More" />
       <TickerTape />
       <div className="iv-view iv-more-view">
-        <div className="iv-more-brand">
-          <Logo3D size={38} />
-          <span className="iv-logo-text">ASKCHO <span className="muted">Invest</span></span>
-        </div>
 
         {GROUPS.map((group) => (
           <div key={group.title} className="iv-more-group">
