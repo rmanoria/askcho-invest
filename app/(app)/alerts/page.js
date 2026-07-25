@@ -7,6 +7,7 @@ import { STOCKS } from "@/lib/stocks";
 import { formatDateTime } from "@/lib/format";
 import Topbar from "@/components/Topbar";
 import TickerTape from "@/components/TickerTape";
+import Select from "@/components/Select";
 
 export default function AlertsPage() {
   const { state, addAlert, removeAlert } = useStore();
@@ -37,16 +38,19 @@ export default function AlertsPage() {
             <div className="iv-form-row">
               <label className="iv-field">
                 <span>Stock</span>
-                <select value={ticker} onChange={(e) => setTicker(e.target.value)}>
-                  {STOCKS.map((s) => <option key={s.ticker} value={s.ticker}>{s.ticker} \u2014 {s.name}</option>)}
-                </select>
+                <Select
+                  value={ticker}
+                  onChange={setTicker}
+                  options={STOCKS.map((s) => ({ value: s.ticker, label: s.ticker + " \u2014 " + s.name }))}
+                />
               </label>
               <label className="iv-field">
                 <span>Condition</span>
-                <select value={condition} onChange={(e) => setCondition(e.target.value)}>
-                  <option value="above">Rises above</option>
-                  <option value="below">Falls below</option>
-                </select>
+                <Select
+                  value={condition}
+                  onChange={setCondition}
+                  options={[{ value: "above", label: "Rises above" }, { value: "below", label: "Falls below" }]}
+                />
               </label>
               <label className="iv-field">
                 <span>Target price</span>

@@ -8,6 +8,7 @@ import { formatMoney } from "@/lib/format";
 import Topbar from "@/components/Topbar";
 import TickerTape from "@/components/TickerTape";
 import Sparkline from "@/components/Sparkline";
+import Select from "@/components/Select";
 
 function itemPrice(item, isIndex) {
   if (isIndex) return item.value.toLocaleString(undefined, { maximumFractionDigits: 2 });
@@ -93,9 +94,7 @@ export default function MarketsPage() {
         <div className="iv-form-row" style={{ marginBottom: 6 }}>
           <label className="iv-field" style={{ maxWidth: 240 }}>
             <span>{typeLabel}</span>
-            <select value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)}>
-              {types.map((t) => <option key={t} value={t}>{t}</option>)}
-            </select>
+            <Select value={typeFilter} onChange={setTypeFilter} options={types} />
           </label>
         </div>
 

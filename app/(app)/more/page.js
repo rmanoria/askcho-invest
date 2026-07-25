@@ -4,7 +4,6 @@ import { BellRing, Users, Sparkles, Settings, LogOut, ChevronRight } from "lucid
 import { useStore } from "@/lib/store";
 import Topbar from "@/components/Topbar";
 import TickerTape from "@/components/TickerTape";
-import Logo3D from "@/components/Logo3D";
 
 const GROUPS = [
   {

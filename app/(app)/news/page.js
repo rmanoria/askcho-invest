@@ -6,6 +6,7 @@ import { MARKETS } from "@/lib/stocks";
 import Topbar from "@/components/Topbar";
 import TickerTape from "@/components/TickerTape";
 import MarketBadge from "@/components/MarketBadge";
+import Select from "@/components/Select";
 
 const TABS = [
   { id: "featured", label: "Featured" },
@@ -61,10 +62,7 @@ export default function NewsPage() {
         <div className="iv-form-row" style={{ marginBottom: 20 }}>
           <label className="iv-field" style={{ maxWidth: 220 }}>
             <span>Market</span>
-            <select value={marketFilter} onChange={(e) => setMarketFilter(e.target.value)}>
-              <option value="All">All</option>
-              {MARKETS.map((m) => <option key={m} value={m}>{m}</option>)}
-            </select>
+            <Select value={marketFilter} onChange={setMarketFilter} options={["All", ...MARKETS]} />
           </label>
         </div>
 

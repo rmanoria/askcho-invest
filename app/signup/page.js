@@ -3,7 +3,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useStore } from "@/lib/store";
-import Logo3D from "@/components/Logo3D";
+import Logo from "@/components/Logo";
 
 export default function SignupPage() {
   const { login } = useStore();
@@ -23,8 +23,7 @@ export default function SignupPage() {
       <div className="iv-auth-aurora" />
       <div className="iv-auth-card">
         <div className="iv-logo-wrap center">
-          <Logo3D size={42} />
-          <span className="iv-logo-text">ASKCHO <span className="muted">Invest</span></span>
+          <Logo size={42} textSize={22} />
         </div>
         <div className="iv-eyebrow center">NGX &middot; NYSE &middot; NASDAQ &middot; ETFs</div>
         <h1 className="iv-auth-title">Create your account</h1>

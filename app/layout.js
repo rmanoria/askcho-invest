@@ -23,8 +23,8 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata = {
-  title: "ASKCHO Invest",
-  description: "Invest across NGX, NYSE, NASDAQ and fixed income \u2014 built for Nigerian investors."
+  title: "CAM",
+  description: "CAM \u2014 invest across NGX, NYSE, NASDAQ and fixed income, built for Nigerian investors."
 };
 
 export default function RootLayout({ children }) {

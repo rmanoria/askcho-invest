@@ -37,30 +37,41 @@ export default function DashboardPage() {
       <TickerTape />
       <div className="iv-view">
 
-        {/* Featured hero + news grid */}
-        {hero && (
-          <div className="iv-panel iv-home-hero" onClick={() => router.push("/stock/" + hero.ticker)}>
-            <div className="iv-home-hero-image" style={{ backgroundImage: "url(" + hero.image + ")" }} />
-            <div className="iv-home-hero-body">
-              <Link href="/news" className="iv-home-hero-label" onClick={(e) => e.stopPropagation()}>News <ChevronRight size={14} /></Link>
-              <h2>{hero.headline}</h2>
-              <div className="iv-sub">{hero.source} &middot; {hero.hoursAgo}h ago</div>
-            </div>
+        {/* Featured hero + news list */}
+        <div className="iv-panel iv-home-news-panel">
+          <div className="iv-news-tabs iv-home-news-tabs">
+            <Link href="/news" className="iv-news-tab active">Featured</Link>
+            <Link href="/news" className="iv-news-tab">Breaking</Link>
+            <Link href="/news" className="iv-news-tab">Most popular</Link>
+            <Link href="/news" className="iv-news-tab">Cryptocurrency</Link>
           </div>
-        )}
-        {newsCards.length > 0 && (
-          <div className="iv-home-news-grid">
-            {newsCards.map((n) => (
-              <div key={n.id} className="iv-panel iv-home-news-card" onClick={() => router.push("/stock/" + n.ticker)}>
-                <div className="iv-home-news-card-image" style={{ backgroundImage: "url(" + n.image + ")" }} />
-                <div className="iv-home-news-card-body">
-                  <div className="iv-news-headline">{n.headline}</div>
-                  <div className="iv-sub">{n.source} &middot; {n.hoursAgo}h ago</div>
-                </div>
+
+          {hero && (
+            <div className="iv-home-hero" onClick={() => router.push("/stock/" + hero.ticker)}>
+              <div className="iv-home-hero-image" style={{ backgroundImage: "url(" + hero.image + ")" }} />
+              <div className="iv-home-hero-scrim" />
+              <div className="iv-home-hero-body">
+                <span className="iv-home-hero-label">Featured</span>
+                <h2>{hero.headline}</h2>
+                <div className="iv-sub">{hero.source} &middot; {hero.hoursAgo}h ago</div>
               </div>
-            ))}
-          </div>
-        )}
+            </div>
+          )}
+
+          {newsCards.length > 0 && (
+            <div className="iv-home-news-list">
+              {newsCards.map((n) => (
+                <div key={n.id} className="iv-news-row" onClick={() => router.push("/stock/" + n.ticker)}>
+                  <div className="iv-news-thumb" style={{ backgroundImage: "url(" + n.image + ")" }} />
+                  <div className="iv-news-row-body">
+                    <div className="iv-news-headline">{n.headline}</div>
+                    <div className="iv-sub">{n.source} &middot; {n.hoursAgo}h ago</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
 
         {/* Markets summary */}
         <div className="iv-panel">

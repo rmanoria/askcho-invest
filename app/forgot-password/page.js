@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
 import Link from "next/link";
-import Logo3D from "@/components/Logo3D";
+import Logo from "@/components/Logo";
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
@@ -17,8 +17,7 @@ export default function ForgotPasswordPage() {
       <div className="iv-auth-aurora" />
       <div className="iv-auth-card">
         <div className="iv-logo-wrap center">
-          <Logo3D size={42} />
-          <span className="iv-logo-text">ASKCHO <span className="muted">Invest</span></span>
+          <Logo size={42} textSize={22} />
         </div>
         {!sent ? (
           <>

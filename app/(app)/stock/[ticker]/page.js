@@ -11,6 +11,7 @@ import PriceChart from "@/components/PriceChart";
 import Stat from "@/components/Stat";
 import MarketBadge from "@/components/MarketBadge";
 import FlashValue from "@/components/FlashValue";
+import Select from "@/components/Select";
 
 export default function StockPage() {
   const { ticker } = useParams();
@@ -104,10 +105,11 @@ export default function StockPage() {
                 <div className="iv-form-row">
                   <label className="iv-field">
                     <span>Condition</span>
-                    <select value={alertCondition} onChange={(e) => setAlertCondition(e.target.value)}>
-                      <option value="above">Rises above</option>
-                      <option value="below">Falls below</option>
-                    </select>
+                    <Select
+                      value={alertCondition}
+                      onChange={setAlertCondition}
+                      options={[{ value: "above", label: "Rises above" }, { value: "below", label: "Falls below" }]}
+                    />
                   </label>
                   <label className="iv-field">
                     <span>Target price ({s.currency})</span>
