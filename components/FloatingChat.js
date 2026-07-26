@@ -14,7 +14,9 @@ export default function FloatingChat() {
   const [messages, setMessages] = useState([WELCOME]);
   const [input, setInput] = useState("");
   const [typing, setTyping] = useState(false);
+  const [pos, setPos] = useState({ x: 0, y: 0 });
   const logRef = useRef(null);
+  const drag = useRef({ active: false, moved: false, startX: 0, startY: 0, origX: 0, origY: 0 });
 
   useEffect(() => {
     if (logRef.current) logRef.current.scrollTop = logRef.current.scrollHeight;
@@ -36,8 +38,35 @@ export default function FloatingChat() {
 
   function clearChat() { setMessages([WELCOME]); }
 
+  function onDragStart(e) {
+    const point = e.touches ? e.touches[0] : e;
+    drag.current = { active: true, moved: false, startX: point.clientX, startY: point.clientY, origX: pos.x, origY: pos.y };
+  }
+  function onDragMove(e) {
+    if (!drag.current.active) return;
+    const point = e.touches ? e.touches[0] : e;
+    const dx = point.clientX - drag.current.startX;
+    const dy = point.clientY - drag.current.startY;
+    if (Math.abs(dx) > 5 || Math.abs(dy) > 5) drag.current.moved = true;
+    if (!drag.current.moved) return;
+    const margin = 8;
+    const nextX = Math.min(Math.max(drag.current.origX + dx, -(window.innerWidth - 66)), margin);
+    const nextY = Math.min(Math.max(drag.current.origY + dy, -(window.innerHeight - 150)), margin);
+    setPos({ x: nextX, y: nextY });
+  }
+  function onDragEnd() { drag.current.active = false; }
+  function onLauncherClick() {
+    if (drag.current.moved) { drag.current.moved = false; return; }
+    setOpen((o) => !o);
+  }
+
   return (
-    <div className="iv-floating-chat">
+    <div
+      className="iv-floating-chat"
+      style={{ transform: "translate(" + pos.x + "px," + pos.y + "px)" }}
+      onMouseMove={onDragMove} onMouseUp={onDragEnd} onMouseLeave={onDragEnd}
+      onTouchMove={onDragMove} onTouchEnd={onDragEnd}
+    >
       {open && (
         <div className="iv-floating-chat-panel">
           <div className="iv-floating-chat-head">
@@ -75,7 +104,13 @@ export default function FloatingChat() {
           </button>
         </div>
       )}
-      <button className="iv-floating-chat-btn" onClick={() => setOpen((o) => !o)} aria-label="Open AI chat assistant">
+      <button
+        className="iv-floating-chat-btn"
+        onClick={onLauncherClick}
+        onMouseDown={onDragStart}
+        onTouchStart={onDragStart}
+        aria-label="Open AI chat assistant, draggable"
+      >
         {open ? <X size={22} /> : <MessageCircle size={22} />}
         {!open && <span className="iv-floating-chat-ping" />}
       </button>

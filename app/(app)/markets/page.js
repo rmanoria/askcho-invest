@@ -1,7 +1,7 @@
 "use client";
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowUpRight, ArrowDownRight } from "lucide-react";
+import { ArrowUpRight, ArrowDownRight, SlidersHorizontal, ChevronDown } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { ALL_INDICES, COMMODITIES, CRYPTO, CURRENCIES, BONDS, FUTURES } from "@/lib/markets";
 import { formatMoney } from "@/lib/format";
@@ -11,6 +11,12 @@ import Sparkline from "@/components/Sparkline";
 import Select from "@/components/Select";
 
 const REGIONS = ["Africa", "Americas", "Europe", "Asia", "Global"];
+const SORTS = [
+  { value: "default", label: "Default order" },
+  { value: "change_desc", label: "Change: high to low" },
+  { value: "change_asc", label: "Change: low to high" },
+  { value: "alpha", label: "Alphabetical" }
+];
 
 // which exchanges belong to which region \u2014 add more regions/exchanges here as they're supported
 const REGION_MARKETS = { Africa: ["NGX"], Americas: ["NASDAQ", "NYSE"] };
@@ -54,13 +60,26 @@ export default function MarketsPage() {
   const router = useRouter();
   const [region, setRegion] = useState("Africa");
   const [type, setType] = useState("Indices");
+  const [sort, setSort] = useState("default");
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const filtersRef = useRef(null);
+
+  useEffect(() => {
+    function onClick(e) { if (filtersRef.current && !filtersRef.current.contains(e.target)) setFiltersOpen(false); }
+    document.addEventListener("mousedown", onClick);
+    return () => document.removeEventListener("mousedown", onClick);
+  }, []);
 
   const stocks = getAllLiveStocks();
   const types = getInstrumentTypes(region);
   const isIndex = type === "Indices";
   const clickable = type === "Stocks" || type === "Funds";
 
-  const items = getInstruments(region, type, stocks);
+  let items = getInstruments(region, type, stocks);
+  const nameOf = (item) => (isIndex ? item.name : item.ticker);
+  if (sort === "change_desc") items = [...items].sort((a, b) => b.changePct - a.changePct);
+  else if (sort === "change_asc") items = [...items].sort((a, b) => a.changePct - b.changePct);
+  else if (sort === "alpha") items = [...items].sort((a, b) => nameOf(a).localeCompare(nameOf(b)));
 
   function handleRegionChange(v) {
     setRegion(v);
@@ -70,7 +89,6 @@ export default function MarketsPage() {
   const avgChange = items.length ? items.reduce((a, i) => a + i.changePct, 0) / items.length : 0;
   const best = items.length ? [...items].sort((a, b) => b.changePct - a.changePct)[0] : null;
   const worst = items.length ? [...items].sort((a, b) => a.changePct - b.changePct)[0] : null;
-  const nameOf = (item) => (isIndex ? item.name : item.ticker);
   const subOf = (item) => item.market || item.type || "";
 
   return (
@@ -79,15 +97,31 @@ export default function MarketsPage() {
       <TickerTape />
       <div className="iv-view">
 
-        <div className="iv-form-row" style={{ marginBottom: 6, alignItems: "flex-end" }}>
-          <label className="iv-field" style={{ maxWidth: 220 }}>
-            <span>Region</span>
-            <Select value={region} onChange={handleRegionChange} options={REGIONS} />
-          </label>
-          <label className="iv-field" style={{ maxWidth: 220 }}>
-            <span>Instrument type</span>
-            <Select value={type} onChange={setType} options={types} />
-          </label>
+        <div className="iv-filters-wrap" ref={filtersRef} style={{ marginBottom: 20 }}>
+          <button className="iv-btn-ghost sm" onClick={() => setFiltersOpen((o) => !o)}>
+            <SlidersHorizontal size={14} /> Filters
+            <span className="iv-sub" style={{ fontSize: 12 }}>{region} &middot; {type}</span>
+            <ChevronDown size={14} className={"iv-select-chevron" + (filtersOpen ? " open" : "")} />
+          </button>
+
+          {filtersOpen && (
+            <div className="iv-filters-panel">
+              <div className="iv-form-row" style={{ marginBottom: 0 }}>
+                <label className="iv-field">
+                  <span>Region</span>
+                  <Select value={region} onChange={handleRegionChange} options={REGIONS} />
+                </label>
+                <label className="iv-field">
+                  <span>Instrument type</span>
+                  <Select value={type} onChange={setType} options={types} />
+                </label>
+                <label className="iv-field">
+                  <span>Sort</span>
+                  <Select value={sort} onChange={setSort} options={SORTS} />
+                </label>
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="iv-panel">
@@ -112,6 +146,10 @@ export default function MarketsPage() {
                 <div className="iv-stat-value mono iv-neg-text">{nameOf(worst)} {worst.changePct.toFixed(2)}%</div>
               </div>
             )}
+            <div className="iv-stat">
+              <div className="iv-stat-label">Tracked instruments</div>
+              <div className="iv-stat-value mono">{items.length}</div>
+            </div>
           </div>
         </div>
 

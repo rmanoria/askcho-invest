@@ -25,6 +25,44 @@ export default function IdeasPage() {
   const laggard = [...stocks].sort((a, b) => a.changePct - b.changePct)[0];
 
   const equities = stocks.filter((s) => s.market !== "ETF");
+
+  const sectorMap = {};
+  equities.forEach((s) => { (sectorMap[s.sector] = sectorMap[s.sector] || []).push(s); });
+  const sectorStats = Object.entries(sectorMap).map(([sector, list]) => ({
+    sector, avg: list.reduce((a, s) => a + s.changePct, 0) / list.length, count: list.length
+  }));
+  const bestSector = sectorStats.length ? [...sectorStats].sort((a, b) => b.avg - a.avg)[0] : null;
+  const worstSector = sectorStats.length ? [...sectorStats].sort((a, b) => a.avg - b.avg)[0] : null;
+
+  const ngxStocks = stocks.filter((s) => s.market === "NGX");
+  const intlStocks = stocks.filter((s) => s.market !== "NGX");
+  const ngxAvg = ngxStocks.length ? ngxStocks.reduce((a, s) => a + s.changePct, 0) / ngxStocks.length : 0;
+  const intlAvg = intlStocks.length ? intlStocks.reduce((a, s) => a + s.changePct, 0) / intlStocks.length : 0;
+
+  const SUMMARIES = [
+    {
+      tag: "Overview",
+      text: (
+        <>Markets are broadly {avgChange >= 0 ? "higher" : "lower"} today, averaging {avgChange >= 0 ? "+" : ""}{avgChange.toFixed(2)}% across tracked stocks.
+          {leader && <> <span className="mono">{leader.ticker}</span> leads, up {leader.changePct.toFixed(2)}%.</>}
+          {laggard && <> <span className="mono">{laggard.ticker}</span> is lagging, down {Math.abs(laggard.changePct).toFixed(2)}%.</>}</>
+      )
+    },
+    {
+      tag: "Sector spotlight",
+      text: bestSector && worstSector ? (
+        <>The {bestSector.sector} sector is leading today, averaging {bestSector.avg >= 0 ? "+" : ""}{bestSector.avg.toFixed(2)}% across {bestSector.count} stock{bestSector.count === 1 ? "" : "s"}.
+          {worstSector.sector !== bestSector.sector && <> {worstSector.sector} is the weakest, down {Math.abs(worstSector.avg).toFixed(2)}% on average.</>}</>
+      ) : "Not enough sector data to compare yet."
+    },
+    {
+      tag: "NGX vs international",
+      text: (
+        <>NGX-listed stocks are averaging {ngxAvg >= 0 ? "+" : ""}{ngxAvg.toFixed(2)}% today, {ngxAvg >= intlAvg ? "outperforming" : "trailing"} international names on NASDAQ/NYSE, which are averaging {intlAvg >= 0 ? "+" : ""}{intlAvg.toFixed(2)}%.</>
+      )
+    }
+  ];
+
   const picks = [...equities]
     .sort((a, b) => (b.changePct - b.peRatio / 20) - (a.changePct - a.peRatio / 20))
     .slice(0, 5);
@@ -49,12 +87,15 @@ export default function IdeasPage() {
       <div className="iv-view">
 
         <div className="iv-panel">
-          <div className="iv-panel-head"><h3>AI market summary</h3><Lightbulb size={16} className="muted" /></div>
-          <p className="iv-sub" style={{ marginBottom: 0 }}>
-            Markets are broadly {avgChange >= 0 ? "higher" : "lower"} today, averaging {avgChange >= 0 ? "+" : ""}{avgChange.toFixed(2)}% across tracked stocks.
-            {leader && <> <span className="mono">{leader.ticker}</span> leads, up {leader.changePct.toFixed(2)}%.</>}
-            {laggard && <> <span className="mono">{laggard.ticker}</span> is lagging, down {Math.abs(laggard.changePct).toFixed(2)}%.</>}
-          </p>
+          <div className="iv-panel-head"><h3>AI market summaries</h3><Lightbulb size={16} className="muted" /></div>
+          <div className="iv-summary-list">
+            {SUMMARIES.map((s) => (
+              <div key={s.tag} className="iv-summary-item">
+                <div className="iv-eyebrow">{s.tag.toUpperCase()}</div>
+                <p className="iv-sub" style={{ marginBottom: 0 }}>{s.text}</p>
+              </div>
+            ))}
+          </div>
         </div>
 
         <div className="iv-panel">
