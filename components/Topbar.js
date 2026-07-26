@@ -10,7 +10,7 @@ export default function Topbar() {
 
   return (
     <div className="iv-topbar">
-      <Link href="/dashboard" className="iv-topbar-brand" aria-label="CAM home">
+      <Link href="/dashboard" className="iv-topbar-brand" aria-label="Home">
         <Logo size={26} />
       </Link>
       <div className="iv-topbar-right">

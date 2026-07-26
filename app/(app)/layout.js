@@ -5,6 +5,7 @@ import { useStore } from "@/lib/store";
 import BottomNav from "@/components/BottomNav";
 import ScrollReveal from "@/components/ScrollReveal";
 import PageTransition from "@/components/PageTransition";
+import FloatingChat from "@/components/FloatingChat";
 
 export default function AppLayout({ children }) {
   const { state, hydrated } = useStore();
@@ -26,6 +27,7 @@ export default function AppLayout({ children }) {
         <PageTransition>{children}</PageTransition>
       </div>
       <BottomNav />
+      <FloatingChat />
     </div>
   );
 }

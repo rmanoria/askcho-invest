@@ -12,7 +12,74 @@ h1,h2,h3,p,.iv-news-headline,.iv-sub{ overflow-wrap:break-word; }
 
 /* brand mark \u2014 uploaded CAM logo, paired with the wordmark everywhere the brand appears */
 .iv-brand{ display:inline-flex; align-items:center; gap:9px; flex-shrink:0; }
-.iv-brand-logo{ height:26px; width:auto; display:block; object-fit:contain; flex-shrink:0; }
+.iv-brand-mark{ display:inline-flex; align-items:center; justify-content:center; background:#fff; border:1px solid #e2e3e6; border-radius:8px; padding:0 7px; flex-shrink:0; box-shadow:0 1px 3px rgba(0,0,0,.18); }
+.iv-brand-logo{ width:auto; display:block; object-fit:contain; flex-shrink:0; }
+
+/* top navbar \u2014 recolored to match the CAM logo (white/black/gray) instead of the app's dark theme */
+
+/* splash screen \u2014 name, then a smooth transition to the logo, before the app appears */
+.iv-splash{ position:fixed; inset:0; z-index:200; background:#ffffff; display:flex; align-items:center; justify-content:center; transition:opacity .5s ease; }
+.iv-splash.out{ opacity:0; pointer-events:none; }
+.iv-splash-logo{ width:min(70vw, 380px); height:auto; opacity:0; transform:scale(.88); transition:opacity .6s ease, transform .6s cubic-bezier(.2,.8,.2,1); }
+.iv-splash-logo.show{ opacity:1; transform:scale(1); }
+
+/* floating AI chatbot \u2014 hovering entry point on every screen, like a customer-service widget */
+.iv-floating-chat{ position:fixed; right:18px; bottom:88px; z-index:80; display:flex; flex-direction:column; align-items:flex-end; gap:12px; }
+.iv-floating-chat-btn{ position:relative; width:52px; height:52px; border-radius:50%; background:#fff; color:#0a0a0d; display:flex; align-items:center; justify-content:center; box-shadow:0 12px 28px rgba(0,0,0,.4); border:1px solid #e2e3e6; transition:transform .15s; }
+.iv-floating-chat-btn:hover{ transform:scale(1.05); }
+.iv-floating-chat-panel{ width:min(88vw, 320px); max-height:420px; display:flex; flex-direction:column;
+  background:linear-gradient(155deg, rgba(23,23,28,.96), rgba(13,13,16,.94)); backdrop-filter:blur(20px) saturate(160%); -webkit-backdrop-filter:blur(20px) saturate(160%);
+  border:1px solid rgba(255,255,255,.09); border-radius:14px; box-shadow:0 24px 60px -14px rgba(0,0,0,.65), inset 0 1px 0 rgba(255,255,255,.06); overflow:hidden; }
+.iv-floating-chat-head{ display:flex; align-items:center; gap:10px; padding:12px 14px; border-bottom:1px solid var(--line); }
+.iv-floating-chat-avatar{ width:32px; height:32px; border-radius:50%; background:#fff; color:#0a0a0d; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+.iv-floating-chat-head-text{ flex:1; min-width:0; }
+.iv-floating-chat-title{ font-weight:600; font-size:13.5px; }
+.iv-floating-chat-status{ display:flex; align-items:center; gap:5px; font-size:11px; color:var(--muted); }
+.iv-floating-chat-status .dot{ width:6px; height:6px; border-radius:50%; background:var(--pos); box-shadow:0 0 6px rgba(52,211,153,.6); }
+.iv-floating-chat-suggestions{ padding:0 14px 10px; }
+.iv-floating-chat-ping{ position:absolute; top:-2px; right:-2px; width:12px; height:12px; border-radius:50%; background:var(--pos); border:2px solid #0a0a0d; }
+.iv-floating-chat-panel .iv-chat-log{ flex:1; }
+
+/* AI ideas cards */
+.iv-idea-list{ display:flex; flex-direction:column; gap:12px; }
+.iv-idea-card{ border:1px solid var(--line); border-radius:10px; padding:14px; background:var(--surface); }
+.iv-idea-card-top{ display:flex; justify-content:space-between; gap:12px; margin-bottom:8px; }
+.iv-idea-reason{ font-size:13px; color:var(--muted); line-height:1.5; margin:0 0 12px; }
+
+/* market summary detail row \u2014 quick add-to-watchlist from the dashboard */
+.iv-summary-detail{ border-top:1px solid var(--line); padding-top:14px; }
+.iv-summary-watch-row{ display:flex; gap:10px; flex-wrap:wrap; margin-top:10px; }
+.iv-summary-watch-item{ display:flex; align-items:center; gap:8px; border:1px solid var(--line); border-radius:9px; padding:9px 10px; background:var(--surface); }
+
+/* dashboard insight carousel \u2014 top movers / undervalued / overvalued / calendar, swipeable with a 3D card transition */
+.iv-insight-panel{ position:relative; overflow:visible; }
+.iv-insight-head{ display:flex; align-items:center; }
+.iv-insight-head .iv-home-news-tabs{ margin:0; flex:1; min-width:0; overflow-x:auto; }
+.iv-insight-nav-btn.edge{ position:absolute; top:56%; transform:translateY(-50%); z-index:5;
+  width:36px; height:36px; border-radius:50%; background:#fff; color:#0a0a0d; border:1px solid #e2e3e6;
+  display:flex; align-items:center; justify-content:center; box-shadow:0 10px 24px rgba(0,0,0,.4); transition:transform .15s ease; }
+.iv-insight-nav-btn.edge:hover{ transform:translateY(-50%) scale(1.08); }
+.iv-insight-nav-btn.edge:active{ transform:translateY(-50%) scale(.94); }
+.iv-insight-nav-btn.edge.left{ left:-14px; }
+.iv-insight-nav-btn.edge.right{ right:-14px; }
+@media(max-width:600px){
+  .iv-insight-nav-btn.edge.left{ left:-10px; }
+  .iv-insight-nav-btn.edge.right{ right:-10px; }
+}
+.iv-insight-viewport{ perspective:1400px; }
+.iv-insight-slide{ transform-origin:center center; backface-visibility:hidden; animation:iv-card-in-next .5s cubic-bezier(.22,.9,.24,1) both; }
+.iv-insight-slide.dir-prev{ animation-name:iv-card-in-prev; }
+@keyframes iv-card-in-next{
+  from{ opacity:0; transform:rotateY(-22deg) translateX(36px) scale(.92); }
+  to{ opacity:1; transform:rotateY(0) translateX(0) scale(1); }
+}
+@keyframes iv-card-in-prev{
+  from{ opacity:0; transform:rotateY(22deg) translateX(-36px) scale(.92); }
+  to{ opacity:1; transform:rotateY(0) translateX(0) scale(1); }
+}
+.iv-insight-dots{ display:flex; gap:6px; justify-content:center; margin-top:16px; }
+.iv-insight-dot{ width:6px; height:6px; padding:0; border-radius:50%; background:var(--line); border:none; transition:width .25s ease, background .25s ease; }
+.iv-insight-dot.active{ width:20px; background:#fff; }
 html{ scrollbar-color:#3d3d46 var(--bg); scrollbar-width:thin; }
 ::-webkit-scrollbar{ width:10px; height:10px; }
 ::-webkit-scrollbar-track{ background:var(--bg); }
@@ -381,7 +448,7 @@ a{ color:inherit; text-decoration:none; }
 .iv-news-hero{ cursor:pointer; border-width:1.5px; padding:18px; }
 .iv-news-hero-image{ width:100%; height:260px; border-radius:10px; margin-bottom:18px; border:1px solid var(--line);
   background-size:cover; background-position:center; }
-.iv-news-hero-meta{ display:flex; align-items:center; gap:8px; margin-bottom:10px; }
+.iv-news-hero-meta{ display:flex; align-items:center; gap:8px; margin-bottom:10px; flex-wrap:wrap; }
 .iv-news-hero h3{ font-size:19px; line-height:1.4; margin-bottom:8px; }
 .iv-news-group{ margin-bottom:8px; }
 .iv-news-list{ display:flex; flex-direction:column; }
