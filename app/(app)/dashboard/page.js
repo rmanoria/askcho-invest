@@ -2,7 +2,7 @@
 import { useState, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowUpRight, ArrowDownRight, ChevronRight, ChevronLeft as ChevronLeftIcon, Star } from "lucide-react";
+import { ArrowUpRight, ArrowDownRight, ChevronRight, ChevronLeft as ChevronLeftIcon, Plus } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { getAllNews } from "@/lib/news";
 import { ALL_INDICES, getCalendarEvents } from "@/lib/markets";
@@ -11,6 +11,7 @@ import Topbar from "@/components/Topbar";
 import TickerTape from "@/components/TickerTape";
 import MarketBadge from "@/components/MarketBadge";
 import FlashValue from "@/components/FlashValue";
+import WatchAlertModal from "@/components/WatchAlertModal";
 
 const INSIGHT_TABS = [
   { id: "movers", label: "Top movers" },
@@ -19,11 +20,20 @@ const INSIGHT_TABS = [
   { id: "calendar", label: "Calendar" }
 ];
 
+const NEWS_TABS = [
+  { id: "featured", label: "Featured" },
+  { id: "breaking", label: "Breaking" },
+  { id: "popular", label: "Most popular" },
+  { id: "crypto", label: "Cryptocurrency" }
+];
+
 export default function DashboardPage() {
-  const { state, getAllLiveStocks, getLiveIndexes, toggleWatch } = useStore();
+  const { state, getAllLiveStocks, getLiveIndexes, toggleWatch, addAlert } = useStore();
   const router = useRouter();
   const [insightTab, setInsightTab] = useState("movers");
   const [insightDir, setInsightDir] = useState("next");
+  const [newsTab, setNewsTab] = useState("featured");
+  const [watchModalStock, setWatchModalStock] = useState(null);
   const insightIndex = INSIGHT_TABS.findIndex((t) => t.id === insightTab);
   const touchX = useRef(null);
 
@@ -47,7 +57,13 @@ export default function DashboardPage() {
   const summaryIndexes = [...indexes, ...ALL_INDICES.slice(3, 6)];
 
   const news = getAllNews();
-  const [hero, ...restNews] = news;
+  const stockByTicker = Object.fromEntries(stocks.map((s) => [s.ticker, s]));
+  const filteredNews =
+    newsTab === "breaking" ? news.filter((n) => n.breaking) :
+    newsTab === "popular" ? [...news].sort((a, b) => Math.abs((stockByTicker[b.ticker] || {}).changePct || 0) - Math.abs((stockByTicker[a.ticker] || {}).changePct || 0)) :
+    newsTab === "crypto" ? [] :
+    news;
+  const [hero, ...restNews] = filteredNews;
   const newsCards = restNews.slice(0, 3);
 
   const sortedByChange = [...stocks].sort((a, b) => Math.abs(b.changePct) - Math.abs(a.changePct));
@@ -69,11 +85,14 @@ export default function DashboardPage() {
         {/* Featured hero + news list */}
         <div className="iv-panel iv-home-news-panel">
           <div className="iv-news-tabs iv-home-news-tabs">
-            <Link href="/news" className="iv-news-tab active">Featured</Link>
-            <Link href="/news" className="iv-news-tab">Breaking</Link>
-            <Link href="/news" className="iv-news-tab">Most popular</Link>
-            <Link href="/news" className="iv-news-tab">Cryptocurrency</Link>
+            {NEWS_TABS.map((t) => (
+              <button key={t.id} className={"iv-news-tab" + (newsTab === t.id ? " active" : "")} onClick={() => setNewsTab(t.id)}>{t.label}</button>
+            ))}
           </div>
+
+          {!hero && (
+            <p className="iv-empty-sm">No {NEWS_TABS.find((t) => t.id === newsTab).label.toLowerCase()} news right now.</p>
+          )}
 
           {hero && (
             <div className="iv-home-hero" onClick={() => router.push("/stock/" + hero.ticker)}>
@@ -106,9 +125,12 @@ export default function DashboardPage() {
         <div className="iv-panel">
           <div className="iv-panel-head">
             <h3>Markets summary</h3>
-            <Link href="/markets" className="iv-btn-ghost sm">All markets <ChevronRight size={14} /></Link>
+            <div style={{ display: "flex", gap: 8 }}>
+              <button className="iv-btn-ghost sm" onClick={() => setWatchModalStock(topGainers[0] || stocks[0])}><Plus size={14} /> Watch &amp; alert</button>
+              <Link href="/markets" className="iv-btn-ghost sm">All markets <ChevronRight size={14} /></Link>
+            </div>
           </div>
-          <div className="iv-stat-strip index" style={{ marginBottom: 16 }}>
+          <div className="iv-stat-strip index" style={{ marginBottom: 0 }}>
             {summaryIndexes.map((ix) => (
               <div key={ix.name} className="iv-stat">
                 <div className="iv-stat-label">{ix.name}</div>
@@ -119,25 +141,6 @@ export default function DashboardPage() {
                 </div>
               </div>
             ))}
-          </div>
-          <div className="iv-summary-detail">
-            <div className="iv-eyebrow">TOP MOVERS &middot; ADD TO WATCHLIST</div>
-            <div className="iv-summary-watch-row">
-              {topGainers.map((s) => {
-                const watched = state.watchlist.includes(s.ticker);
-                return (
-                  <div key={s.ticker} className="iv-summary-watch-item">
-                    <div onClick={() => router.push("/stock/" + s.ticker)} style={{ cursor: "pointer" }}>
-                      <div className="mono">{s.ticker}</div>
-                      <div className={"iv-chg " + (s.changePct >= 0 ? "pos" : "neg")}>{s.changePct >= 0 ? "+" : ""}{s.changePct.toFixed(2)}%</div>
-                    </div>
-                    <button className="iv-star-btn" onClick={() => toggleWatch(s.ticker)} aria-label="Toggle watchlist">
-                      <Star size={14} fill={watched ? "#ffffff" : "none"} />
-                    </button>
-                  </div>
-                );
-              })}
-            </div>
           </div>
         </div>
 
@@ -229,6 +232,17 @@ export default function DashboardPage() {
         </div>
 
       </div>
+
+      <WatchAlertModal
+        open={!!watchModalStock}
+        stock={watchModalStock}
+        stocks={stocks}
+        onChangeStock={(ticker) => setWatchModalStock(stocks.find((s) => s.ticker === ticker))}
+        onClose={() => setWatchModalStock(null)}
+        watched={watchModalStock ? state.watchlist.includes(watchModalStock.ticker) : false}
+        onToggleWatch={toggleWatch}
+        onCreateAlert={addAlert}
+      />
     </>
   );
 }

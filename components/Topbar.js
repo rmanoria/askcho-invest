@@ -11,7 +11,7 @@ export default function Topbar() {
   return (
     <div className="iv-topbar">
       <Link href="/dashboard" className="iv-topbar-brand" aria-label="Home">
-        <Logo size={26} />
+        <Logo size={38} />
       </Link>
       <div className="iv-topbar-right">
         <div className="iv-pill"><span className="dot" /><span className="iv-pill-label">Markets live</span></div>

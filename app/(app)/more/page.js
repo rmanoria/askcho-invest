@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { BellRing, Users, Sparkles, Settings, LogOut, ChevronRight } from "lucide-react";
+import { BellRing, Users, Lightbulb, Settings, LogOut, ChevronRight } from "lucide-react";
 import { useStore } from "@/lib/store";
 import Topbar from "@/components/Topbar";
 import TickerTape from "@/components/TickerTape";
@@ -16,7 +16,7 @@ const GROUPS = [
     title: "Community & AI",
     items: [
       { href: "/community", label: "Community", icon: Users },
-      { href: "/learn", label: "Askcho Investment AI", icon: Sparkles }
+      { href: "/ideas", label: "Ideas", icon: Lightbulb }
     ]
   },
   {
