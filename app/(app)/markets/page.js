@@ -1,7 +1,7 @@
 "use client";
-import { useState, useRef, useEffect } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowUpRight, ArrowDownRight, SlidersHorizontal, ChevronDown } from "lucide-react";
+import { ArrowUpRight, ArrowDownRight } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { ALL_INDICES, COMMODITIES, CRYPTO, CURRENCIES, BONDS, FUTURES } from "@/lib/markets";
 import { formatMoney } from "@/lib/format";
@@ -10,7 +10,7 @@ import TickerTape from "@/components/TickerTape";
 import Sparkline from "@/components/Sparkline";
 import Select from "@/components/Select";
 
-const REGIONS = ["Africa", "Americas", "Europe", "Asia", "Global"];
+const REGIONS = ["Africa", "America", "Europe", "Asia", "Global"];
 const SORTS = [
   { value: "default", label: "Default order" },
   { value: "change_desc", label: "Change: high to low" },
@@ -19,8 +19,8 @@ const SORTS = [
 ];
 
 // which exchanges belong to which region \u2014 add more regions/exchanges here as they're supported
-const REGION_MARKETS = { Africa: ["NGX"], Americas: ["NASDAQ", "NYSE"] };
-const REGION_FUNDS = { Americas: ["ETF"] };
+const REGION_MARKETS = { Africa: ["NGX"], America: ["NASDAQ", "NYSE"] };
+const REGION_FUNDS = { America: ["ETF"] };
 
 // instrument types available once a region is picked \u2014 geography-specific types first, then
 // the globally-traded types (commodities, crypto, currencies, futures) which apply everywhere.
@@ -31,7 +31,7 @@ function getInstrumentTypes(region) {
     types.push("Indices");
     if (REGION_MARKETS[region]) types.push("Stocks");
     if (REGION_FUNDS[region]) types.push("Funds");
-    if (["Africa", "Americas", "Europe"].includes(region)) types.push("Bonds");
+    if (["Africa", "America", "Europe"].includes(region)) types.push("Bonds");
   }
   types.push("Currencies", "Commodities", "Cryptocurrency", "Futures");
   return types;
@@ -61,14 +61,6 @@ export default function MarketsPage() {
   const [region, setRegion] = useState("Africa");
   const [type, setType] = useState("Indices");
   const [sort, setSort] = useState("default");
-  const [filtersOpen, setFiltersOpen] = useState(false);
-  const filtersRef = useRef(null);
-
-  useEffect(() => {
-    function onClick(e) { if (filtersRef.current && !filtersRef.current.contains(e.target)) setFiltersOpen(false); }
-    document.addEventListener("mousedown", onClick);
-    return () => document.removeEventListener("mousedown", onClick);
-  }, []);
 
   const stocks = getAllLiveStocks();
   const types = getInstrumentTypes(region);
@@ -97,31 +89,10 @@ export default function MarketsPage() {
       <TickerTape />
       <div className="iv-view">
 
-        <div className="iv-filters-wrap" ref={filtersRef} style={{ marginBottom: 20 }}>
-          <button className="iv-btn-ghost sm" onClick={() => setFiltersOpen((o) => !o)}>
-            <SlidersHorizontal size={14} /> Filters
-            <span className="iv-sub" style={{ fontSize: 12 }}>{region} &middot; {type}</span>
-            <ChevronDown size={14} className={"iv-select-chevron" + (filtersOpen ? " open" : "")} />
-          </button>
-
-          {filtersOpen && (
-            <div className="iv-filters-panel">
-              <div className="iv-form-row" style={{ marginBottom: 0 }}>
-                <label className="iv-field">
-                  <span>Region</span>
-                  <Select value={region} onChange={handleRegionChange} options={REGIONS} />
-                </label>
-                <label className="iv-field">
-                  <span>Instrument type</span>
-                  <Select value={type} onChange={setType} options={types} />
-                </label>
-                <label className="iv-field">
-                  <span>Sort</span>
-                  <Select value={sort} onChange={setSort} options={SORTS} />
-                </label>
-              </div>
-            </div>
-          )}
+        <div className="iv-filter-bar">
+          <Select compact label="Region" value={region} onChange={handleRegionChange} options={REGIONS} />
+          <Select compact label="Type" value={type} onChange={setType} options={types} />
+          <Select compact label="Sort" value={sort} onChange={setSort} options={SORTS} />
         </div>
 
         <div className="iv-panel">

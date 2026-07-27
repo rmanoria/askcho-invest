@@ -12,6 +12,7 @@ import TickerTape from "@/components/TickerTape";
 import MarketBadge from "@/components/MarketBadge";
 import FlashValue from "@/components/FlashValue";
 import WatchAlertModal from "@/components/WatchAlertModal";
+import Select from "@/components/Select";
 
 const INSIGHT_TABS = [
   { id: "movers", label: "Top movers" },
@@ -27,12 +28,20 @@ const NEWS_TABS = [
   { id: "crypto", label: "Cryptocurrency" }
 ];
 
+const NEWS_REGIONS = ["All", "Africa", "America", "Europe", "Asia", "Global"];
+
+// NGX-listed names are Africa, everything else in this dataset (NASDAQ/NYSE/ETF) is America
+function marketRegion(market) {
+  return market === "NGX" ? "Africa" : "America";
+}
+
 export default function DashboardPage() {
   const { state, getAllLiveStocks, getLiveIndexes, toggleWatch, addAlert } = useStore();
   const router = useRouter();
   const [insightTab, setInsightTab] = useState("movers");
   const [insightDir, setInsightDir] = useState("next");
   const [newsTab, setNewsTab] = useState("featured");
+  const [newsRegion, setNewsRegion] = useState("All");
   const [watchModalStock, setWatchModalStock] = useState(null);
   const insightIndex = INSIGHT_TABS.findIndex((t) => t.id === insightTab);
   const touchX = useRef(null);
@@ -58,11 +67,12 @@ export default function DashboardPage() {
 
   const news = getAllNews();
   const stockByTicker = Object.fromEntries(stocks.map((s) => [s.ticker, s]));
-  const filteredNews =
+  let filteredNews =
     newsTab === "breaking" ? news.filter((n) => n.breaking) :
     newsTab === "popular" ? [...news].sort((a, b) => Math.abs((stockByTicker[b.ticker] || {}).changePct || 0) - Math.abs((stockByTicker[a.ticker] || {}).changePct || 0)) :
     newsTab === "crypto" ? [] :
     news;
+  if (newsRegion !== "All") filteredNews = filteredNews.filter((n) => marketRegion(n.market) === newsRegion);
   const [hero, ...restNews] = filteredNews;
   const newsCards = restNews.slice(0, 3);
 
@@ -84,10 +94,13 @@ export default function DashboardPage() {
 
         {/* Featured hero + news list */}
         <div className="iv-panel iv-home-news-panel">
-          <div className="iv-news-tabs iv-home-news-tabs">
-            {NEWS_TABS.map((t) => (
-              <button key={t.id} className={"iv-news-tab" + (newsTab === t.id ? " active" : "")} onClick={() => setNewsTab(t.id)}>{t.label}</button>
-            ))}
+          <div className="iv-home-news-head">
+            <div className="iv-news-tabs iv-home-news-tabs">
+              {NEWS_TABS.map((t) => (
+                <button key={t.id} className={"iv-news-tab" + (newsTab === t.id ? " active" : "")} onClick={() => setNewsTab(t.id)}>{t.label}</button>
+              ))}
+            </div>
+            <Select compact label="Region" value={newsRegion} onChange={setNewsRegion} options={NEWS_REGIONS} />
           </div>
 
           {!hero && (

@@ -25,10 +25,10 @@ export default function WatchAlertModal({ open, stock, stocks, onChangeStock, on
   return (
     <div className="iv-modal-overlay" onClick={onClose}>
       <div className="iv-modal" onClick={(e) => e.stopPropagation()}>
-        <button className="iv-icon-btn" onClick={onClose} aria-label="Close" style={{ position: "absolute", top: 16, right: 16 }}><X size={16} /></button>
-        <div className="iv-panel-head" style={{ marginBottom: 18 }}>
+        <button className="iv-icon-btn" onClick={onClose} aria-label="Close" style={{ position: "absolute", top: 14, right: 14, zIndex: 1 }}><X size={16} /></button>
+        <div className="iv-panel-head" style={{ marginBottom: 18, paddingRight: 44, flexWrap: "nowrap" }}>
           <h3>Watch &amp; alert</h3>
-          <Star size={16} className="muted" />
+          <Star size={16} className="muted" style={{ flexShrink: 0 }} />
         </div>
 
         <form onSubmit={submit}>

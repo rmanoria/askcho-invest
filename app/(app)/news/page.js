@@ -1,7 +1,6 @@
 "use client";
-import { useState, useRef, useEffect } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { SlidersHorizontal, ChevronDown } from "lucide-react";
 import { getAllNews } from "@/lib/news";
 import { MARKETS } from "@/lib/stocks";
 import { formatMoney } from "@/lib/format";
@@ -31,19 +30,17 @@ export default function NewsPage() {
   const [marketFilter, setMarketFilter] = useState("All");
   const [sourceFilter, setSourceFilter] = useState("All");
   const [sort, setSort] = useState("latest");
-  const [filtersOpen, setFiltersOpen] = useState(false);
-  const filtersRef = useRef(null);
   const router = useRouter();
   const { getAllLiveStocks } = useStore();
   const all = getAllNews();
   const stockByTicker = Object.fromEntries(getAllLiveStocks().map((s) => [s.ticker, s]));
   const sources = ["All", ...Array.from(new Set(all.map((n) => n.source)))];
 
-  useEffect(() => {
-    function onClick(e) { if (filtersRef.current && !filtersRef.current.contains(e.target)) setFiltersOpen(false); }
-    document.addEventListener("mousedown", onClick);
-    return () => document.removeEventListener("mousedown", onClick);
-  }, []);
+  const breakingCount = all.filter((n) => n.breaking).length;
+  const categoryOptions = TABS.map((t) => ({
+    value: t.id,
+    label: t.label + (t.id === "breaking" && breakingCount > 0 ? " (" + breakingCount + ")" : "")
+  }));
 
   let filtered =
     tab === "featured" ? all :
@@ -55,8 +52,6 @@ export default function NewsPage() {
   filtered = [...filtered].sort((a, b) => sort === "latest" ? a.hoursAgo - b.hoursAgo : b.hoursAgo - a.hoursAgo);
 
   const [hero, ...rest] = filtered.length ? filtered : all;
-  const breakingCount = all.filter((n) => n.breaking).length;
-  const activeFilterCount = (marketFilter !== "All" ? 1 : 0) + (sourceFilter !== "All" ? 1 : 0) + (sort !== "latest" ? 1 : 0);
 
   const groups = [];
   rest.slice(0, 40).forEach((n) => {
@@ -72,43 +67,14 @@ export default function NewsPage() {
       <TickerTape />
       <div className="iv-view iv-news-view">
 
-        <div className="iv-filters-wrap" ref={filtersRef}>
-          <button className="iv-btn-ghost sm" onClick={() => setFiltersOpen((o) => !o)}>
-            <SlidersHorizontal size={14} /> Filters
-            {activeFilterCount > 0 && <span className="iv-filter-count">{activeFilterCount}</span>}
-            <ChevronDown size={14} className={"iv-select-chevron" + (filtersOpen ? " open" : "")} />
-          </button>
-
-          {filtersOpen && (
-            <div className="iv-filters-panel">
-              <div className="iv-eyebrow">CATEGORY</div>
-              <div className="iv-chip-row">
-                {TABS.map((t) => (
-                  <button key={t.id} className={"iv-chip" + (tab === t.id ? " active" : "")} onClick={() => setTab(t.id)}>
-                    {t.label}
-                    {t.id === "breaking" && breakingCount > 0 && <span className="iv-news-dot" />}
-                  </button>
-                ))}
-              </div>
-              <div className="iv-form-row" style={{ marginTop: 16, marginBottom: 0 }}>
-                <label className="iv-field">
-                  <span>Market</span>
-                  <Select value={marketFilter} onChange={setMarketFilter} options={["All", ...MARKETS]} />
-                </label>
-                <label className="iv-field">
-                  <span>Source</span>
-                  <Select value={sourceFilter} onChange={setSourceFilter} options={sources} />
-                </label>
-                <label className="iv-field">
-                  <span>Sort</span>
-                  <Select value={sort} onChange={setSort} options={SORTS} />
-                </label>
-              </div>
-            </div>
-          )}
+        <div className="iv-filter-bar">
+          <Select compact label="Category" value={tab} onChange={setTab} options={categoryOptions} />
+          <Select compact label="Market" value={marketFilter} onChange={setMarketFilter} options={["All", ...MARKETS]} />
+          <Select compact label="Source" value={sourceFilter} onChange={setSourceFilter} options={sources} />
+          <Select compact label="Sort" value={sort} onChange={setSort} options={SORTS} />
         </div>
 
-        <p className="iv-sub" style={{ margin: "14px 0 20px" }}>{filtered.length} article{filtered.length === 1 ? "" : "s"} match these filters.</p>
+        <p className="iv-sub" style={{ margin: "0 0 20px" }}>{filtered.length} article{filtered.length === 1 ? "" : "s"} match these filters.</p>
 
         {hero && (
           <div className="iv-panel iv-news-hero" onClick={() => router.push("/stock/" + hero.ticker)}>
