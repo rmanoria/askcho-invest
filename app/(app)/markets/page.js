@@ -12,10 +12,10 @@ import Select from "@/components/Select";
 
 const REGIONS = ["Africa", "America", "Europe", "Asia", "Global"];
 const SORTS = [
-  { value: "default", label: "Default order" },
-  { value: "change_desc", label: "Change: high to low" },
-  { value: "change_asc", label: "Change: low to high" },
-  { value: "alpha", label: "Alphabetical" }
+  { value: "default", label: "Default" },
+  { value: "change_desc", label: "High to low" },
+  { value: "change_asc", label: "Low to high" },
+  { value: "alpha", label: "A\u2013Z" }
 ];
 
 // which exchanges belong to which region \u2014 add more regions/exchanges here as they're supported

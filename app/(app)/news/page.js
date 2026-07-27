@@ -17,7 +17,7 @@ const TABS = [
   { id: "global", label: "Global" }
 ];
 
-const SORTS = [{ value: "latest", label: "Latest first" }, { value: "oldest", label: "Oldest first" }];
+const SORTS = [{ value: "latest", label: "Latest" }, { value: "oldest", label: "Oldest" }];
 
 function groupLabel(hoursAgo) {
   if (hoursAgo <= 24) return "Today";

@@ -49,7 +49,7 @@ export default function Select({ value, onChange, options, placeholder, compact,
   return (
     <div className={"iv-select" + (compact ? " compact" : "")} ref={triggerRef}>
       <button type="button" className="iv-select-trigger" onClick={() => setOpen((o) => !o)} aria-haspopup="listbox" aria-expanded={open}>
-        <span>{label ? label + ": " : ""}{current ? current.label : placeholder || "Select"}</span>
+        <span className="iv-select-value">{label && <span className="iv-select-label">{label}: </span>}{current ? current.label : placeholder || "Select"}</span>
         <ChevronDown size={15} className={"iv-select-chevron" + (open ? " open" : "")} />
       </button>
       {open && pos && typeof document !== "undefined" && createPortal(
