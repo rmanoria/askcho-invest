@@ -11,6 +11,8 @@ import Sparkline from "@/components/Sparkline";
 import Select from "@/components/Select";
 
 const REGIONS = ["Africa", "America", "Europe", "Asia", "Global"];
+// countries available once "Africa" is picked as the region \u2014 add more as data is added for them
+const AFRICA_COUNTRIES = ["All", "Nigeria"];
 const SORTS = [
   { value: "default", label: "Default" },
   { value: "change_desc", label: "High to low" },
@@ -59,6 +61,7 @@ export default function MarketsPage() {
   const { getAllLiveStocks } = useStore();
   const router = useRouter();
   const [region, setRegion] = useState("Africa");
+  const [country, setCountry] = useState("All");
   const [type, setType] = useState("Indices");
   const [sort, setSort] = useState("default");
 
@@ -75,6 +78,7 @@ export default function MarketsPage() {
 
   function handleRegionChange(v) {
     setRegion(v);
+    setCountry("All");
     setType(getInstrumentTypes(v)[0]);
   }
 
@@ -91,14 +95,17 @@ export default function MarketsPage() {
 
         <div className="iv-filter-bar">
           <Select compact label="Region" value={region} onChange={handleRegionChange} options={REGIONS} />
+          {region === "Africa" && (
+            <Select compact label="Country" value={country} onChange={setCountry} options={AFRICA_COUNTRIES} />
+          )}
           <Select compact label="Type" value={type} onChange={setType} options={types} />
           <Select compact label="Sort" value={sort} onChange={setSort} options={SORTS} />
         </div>
 
         <div className="iv-panel">
-          <div className="iv-panel-head"><h3>{region} &middot; {type}</h3></div>
+          <div className="iv-panel-head"><h3>{region === "Africa" && country !== "All" ? country : region} &middot; {type}</h3></div>
           <p className="iv-sub" style={{ marginBottom: 16 }}>
-            {type} in {region} {avgChange >= 0 ? "are broadly higher" : "are broadly lower"} right now, averaging {avgChange >= 0 ? "+" : ""}{avgChange.toFixed(2)}% across {items.length} tracked instrument{items.length === 1 ? "" : "s"}.
+            {type} in {region === "Africa" && country !== "All" ? country : region} {avgChange >= 0 ? "are broadly higher" : "are broadly lower"} right now, averaging {avgChange >= 0 ? "+" : ""}{avgChange.toFixed(2)}% across {items.length} tracked instrument{items.length === 1 ? "" : "s"}.
           </p>
           <div className="iv-stat-strip small" style={{ margin: 0 }}>
             <div className="iv-stat">

@@ -17,7 +17,14 @@ const TABS = [
   { id: "global", label: "Global" }
 ];
 
-const SORTS = [{ value: "latest", label: "Latest" }, { value: "oldest", label: "Oldest" }];
+const REGIONS = ["All", "Africa", "America", "Europe", "Asia", "Global"];
+// countries available once "Africa" is picked as the region \u2014 add more as data is added for them
+const AFRICA_COUNTRIES = ["All", "Nigeria"];
+
+// NGX-listed names are Africa, everything else in this dataset (NASDAQ/NYSE/ETF) is America
+function marketRegion(market) {
+  return market === "NGX" ? "Africa" : "America";
+}
 
 function groupLabel(hoursAgo) {
   if (hoursAgo <= 24) return "Today";
@@ -29,7 +36,8 @@ export default function NewsPage() {
   const [tab, setTab] = useState("featured");
   const [marketFilter, setMarketFilter] = useState("All");
   const [sourceFilter, setSourceFilter] = useState("All");
-  const [sort, setSort] = useState("latest");
+  const [region, setRegion] = useState("All");
+  const [country, setCountry] = useState("All");
   const router = useRouter();
   const { getAllLiveStocks } = useStore();
   const all = getAllNews();
@@ -49,7 +57,9 @@ export default function NewsPage() {
 
   if (marketFilter !== "All") filtered = filtered.filter((n) => n.market === marketFilter);
   if (sourceFilter !== "All") filtered = filtered.filter((n) => n.source === sourceFilter);
-  filtered = [...filtered].sort((a, b) => sort === "latest" ? a.hoursAgo - b.hoursAgo : b.hoursAgo - a.hoursAgo);
+  if (region !== "All") filtered = filtered.filter((n) => marketRegion(n.market) === region);
+  if (region === "Africa" && country === "Nigeria") filtered = filtered.filter((n) => n.market === "NGX");
+  filtered = [...filtered].sort((a, b) => a.hoursAgo - b.hoursAgo);
 
   const [hero, ...rest] = filtered.length ? filtered : all;
 
@@ -70,8 +80,11 @@ export default function NewsPage() {
         <div className="iv-filter-bar">
           <Select compact label="Category" value={tab} onChange={setTab} options={categoryOptions} />
           <Select compact label="Market" value={marketFilter} onChange={setMarketFilter} options={["All", ...MARKETS]} />
+          <Select compact label="Region" value={region} onChange={(v) => { setRegion(v); setCountry("All"); }} options={REGIONS} />
+          {region === "Africa" && (
+            <Select compact label="Country" value={country} onChange={setCountry} options={AFRICA_COUNTRIES} />
+          )}
           <Select compact label="Source" value={sourceFilter} onChange={setSourceFilter} options={sources} />
-          <Select compact label="Sort" value={sort} onChange={setSort} options={SORTS} />
         </div>
 
         <p className="iv-sub" style={{ margin: "0 0 20px" }}>{filtered.length} article{filtered.length === 1 ? "" : "s"} match these filters.</p>

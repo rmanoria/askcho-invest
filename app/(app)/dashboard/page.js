@@ -15,20 +15,22 @@ import WatchAlertModal from "@/components/WatchAlertModal";
 import Select from "@/components/Select";
 
 const INSIGHT_TABS = [
-  { id: "movers", label: "Top movers" },
-  { id: "under", label: "Most undervalued" },
-  { id: "over", label: "Most overvalued" },
-  { id: "calendar", label: "Calendar" }
+  { id: "movers", label: "Top movers", short: "Movers" },
+  { id: "under", label: "Most undervalued", short: "Undervalued" },
+  { id: "over", label: "Most overvalued", short: "Overvalued" },
+  { id: "calendar", label: "Calendar", short: "Calendar" }
 ];
 
 const NEWS_TABS = [
-  { id: "featured", label: "Featured" },
-  { id: "breaking", label: "Breaking" },
-  { id: "popular", label: "Most popular" },
-  { id: "crypto", label: "Cryptocurrency" }
+  { id: "featured", label: "Featured", short: "Featured" },
+  { id: "breaking", label: "Breaking", short: "Breaking" },
+  { id: "popular", label: "Most popular", short: "Popular" },
+  { id: "crypto", label: "Cryptocurrency", short: "Crypto" }
 ];
 
 const NEWS_REGIONS = ["All", "Africa", "America", "Europe", "Asia", "Global"];
+// countries available once "Africa" is picked as the region \u2014 add more as data is added for them
+const AFRICA_COUNTRIES = ["All", "Nigeria"];
 
 // NGX-listed names are Africa, everything else in this dataset (NASDAQ/NYSE/ETF) is America
 function marketRegion(market) {
@@ -42,6 +44,7 @@ export default function DashboardPage() {
   const [insightDir, setInsightDir] = useState("next");
   const [newsTab, setNewsTab] = useState("featured");
   const [newsRegion, setNewsRegion] = useState("All");
+  const [newsCountry, setNewsCountry] = useState("All");
   const [watchModalStock, setWatchModalStock] = useState(null);
   const insightIndex = INSIGHT_TABS.findIndex((t) => t.id === insightTab);
   const touchX = useRef(null);
@@ -73,6 +76,7 @@ export default function DashboardPage() {
     newsTab === "crypto" ? [] :
     news;
   if (newsRegion !== "All") filteredNews = filteredNews.filter((n) => marketRegion(n.market) === newsRegion);
+  if (newsRegion === "Africa" && newsCountry === "Nigeria") filteredNews = filteredNews.filter((n) => n.market === "NGX");
   const [hero, ...restNews] = filteredNews;
   const newsCards = restNews.slice(0, 3);
 
@@ -97,10 +101,18 @@ export default function DashboardPage() {
           <div className="iv-home-news-head">
             <div className="iv-news-tabs iv-home-news-tabs">
               {NEWS_TABS.map((t) => (
-                <button key={t.id} className={"iv-news-tab" + (newsTab === t.id ? " active" : "")} onClick={() => setNewsTab(t.id)}>{t.label}</button>
+                <button key={t.id} className={"iv-news-tab" + (newsTab === t.id ? " active" : "")} onClick={() => setNewsTab(t.id)}>
+                  <span className="iv-tab-full">{t.label}</span>
+                  <span className="iv-tab-short">{t.short}</span>
+                </button>
               ))}
             </div>
-            <Select compact label="Region" value={newsRegion} onChange={setNewsRegion} options={NEWS_REGIONS} />
+            <div className="iv-home-news-filters">
+              <Select compact label="Region" value={newsRegion} onChange={(v) => { setNewsRegion(v); setNewsCountry("All"); }} options={NEWS_REGIONS} />
+              {newsRegion === "Africa" && (
+                <Select compact label="Country" value={newsCountry} onChange={setNewsCountry} options={AFRICA_COUNTRIES} />
+              )}
+            </div>
           </div>
 
           {!hero && (
@@ -162,7 +174,10 @@ export default function DashboardPage() {
           <div className="iv-insight-head">
             <div className="iv-news-tabs iv-home-news-tabs">
               {INSIGHT_TABS.map((t) => (
-                <button key={t.id} className={"iv-news-tab" + (insightTab === t.id ? " active" : "")} onClick={() => goToInsight(t.id)}>{t.label}</button>
+                <button key={t.id} className={"iv-news-tab" + (insightTab === t.id ? " active" : "")} onClick={() => goToInsight(t.id)}>
+                  <span className="iv-tab-full">{t.label}</span>
+                  <span className="iv-tab-short">{t.short}</span>
+                </button>
               ))}
             </div>
           </div>
