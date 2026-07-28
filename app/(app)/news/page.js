@@ -78,13 +78,13 @@ export default function NewsPage() {
       <div className="iv-view iv-news-view">
 
         <div className="iv-filter-bar">
-          <Select compact label="Category" value={tab} onChange={setTab} options={categoryOptions} />
-          <Select compact label="Market" value={marketFilter} onChange={setMarketFilter} options={["All", ...MARKETS]} />
-          <Select compact label="Region" value={region} onChange={(v) => { setRegion(v); setCountry("All"); }} options={REGIONS} />
+          <Select compact label="Category" shortLabel="Cat" value={tab} onChange={setTab} options={categoryOptions} />
+          <Select compact label="Market" shortLabel="Mkt" value={marketFilter} onChange={setMarketFilter} options={["All", ...MARKETS]} />
+          <Select compact label="Region" shortLabel="Reg" value={region} onChange={(v) => { setRegion(v); setCountry("All"); }} options={REGIONS} />
           {region === "Africa" && (
-            <Select compact label="Country" value={country} onChange={setCountry} options={AFRICA_COUNTRIES} />
+            <Select compact label="Country" shortLabel="Ctry" value={country} onChange={setCountry} options={AFRICA_COUNTRIES} />
           )}
-          <Select compact label="Source" value={sourceFilter} onChange={setSourceFilter} options={sources} />
+          <Select compact label="Source" shortLabel="Src" value={sourceFilter} onChange={setSourceFilter} options={sources} />
         </div>
 
         <p className="iv-sub" style={{ margin: "0 0 20px" }}>{filtered.length} article{filtered.length === 1 ? "" : "s"} match these filters.</p>

@@ -94,12 +94,12 @@ export default function MarketsPage() {
       <div className="iv-view">
 
         <div className="iv-filter-bar">
-          <Select compact label="Region" value={region} onChange={handleRegionChange} options={REGIONS} />
+          <Select compact label="Region" shortLabel="Reg" value={region} onChange={handleRegionChange} options={REGIONS} />
           {region === "Africa" && (
-            <Select compact label="Country" value={country} onChange={setCountry} options={AFRICA_COUNTRIES} />
+            <Select compact label="Country" shortLabel="Ctry" value={country} onChange={setCountry} options={AFRICA_COUNTRIES} />
           )}
-          <Select compact label="Type" value={type} onChange={setType} options={types} />
-          <Select compact label="Sort" value={sort} onChange={setSort} options={SORTS} />
+          <Select compact label="Type" shortLabel="Type" value={type} onChange={setType} options={types} />
+          <Select compact label="Sort" shortLabel="Sort" value={sort} onChange={setSort} options={SORTS} />
         </div>
 
         <div className="iv-panel">

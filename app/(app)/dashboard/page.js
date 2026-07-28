@@ -108,9 +108,9 @@ export default function DashboardPage() {
               ))}
             </div>
             <div className="iv-home-news-filters">
-              <Select compact label="Region" value={newsRegion} onChange={(v) => { setNewsRegion(v); setNewsCountry("All"); }} options={NEWS_REGIONS} />
+              <Select compact label="Region" shortLabel="Reg" value={newsRegion} onChange={(v) => { setNewsRegion(v); setNewsCountry("All"); }} options={NEWS_REGIONS} />
               {newsRegion === "Africa" && (
-                <Select compact label="Country" value={newsCountry} onChange={setNewsCountry} options={AFRICA_COUNTRIES} />
+                <Select compact label="Country" shortLabel="Ctry" value={newsCountry} onChange={setNewsCountry} options={AFRICA_COUNTRIES} />
               )}
             </div>
           </div>
