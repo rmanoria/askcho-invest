@@ -13,6 +13,7 @@ import MarketBadge from "@/components/MarketBadge";
 import FlashValue from "@/components/FlashValue";
 import WatchAlertModal from "@/components/WatchAlertModal";
 import Select from "@/components/Select";
+import { useAuthGate } from "@/components/AuthGate";
 
 const INSIGHT_TABS = [
   { id: "movers", label: "Top movers", short: "Movers" },
@@ -39,6 +40,7 @@ function marketRegion(market) {
 
 export default function DashboardPage() {
   const { state, getAllLiveStocks, getLiveIndexes, toggleWatch, addAlert } = useStore();
+  const { requireAuth } = useAuthGate();
   const router = useRouter();
   const [insightTab, setInsightTab] = useState("movers");
   const [insightDir, setInsightDir] = useState("next");
@@ -151,7 +153,7 @@ export default function DashboardPage() {
           <div className="iv-panel-head">
             <h3>Markets summary</h3>
             <div style={{ display: "flex", gap: 8 }}>
-              <button className="iv-btn-ghost sm" onClick={() => setWatchModalStock(topGainers[0] || stocks[0])}><Plus size={14} /> Watch &amp; alert</button>
+              <button className="iv-btn-ghost sm" onClick={() => requireAuth(() => setWatchModalStock(topGainers[0] || stocks[0]))}><Plus size={14} /> Watch &amp; alert</button>
               <Link href="/markets" className="iv-btn-ghost sm">All markets <ChevronRight size={14} /></Link>
             </div>
           </div>

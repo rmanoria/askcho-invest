@@ -3,6 +3,8 @@ import { useState, useRef, useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { MessageCircle, X, Send, Bot, RotateCcw, Lightbulb } from "lucide-react";
 import { getTutorReply } from "@/lib/tutor";
+import { useStore } from "@/lib/store";
+import { useAuthGate } from "./AuthGate";
 
 const SUGGESTIONS = ["What's moving today?", "Explain P/E ratio", "Diversification tips", "How does the NGX work?"];
 const WELCOME = { role: "tutor", text: "Hi, I'm your AI assistant. Ask me about a stock, a market term, or what's moving today." };
@@ -10,6 +12,8 @@ const WELCOME = { role: "tutor", text: "Hi, I'm your AI assistant. Ask me about 
 export default function FloatingChat() {
   const pathname = usePathname();
   const router = useRouter();
+  const { state } = useStore();
+  const { requireAuth } = useAuthGate();
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState([WELCOME]);
   const [input, setInput] = useState("");
@@ -57,6 +61,7 @@ export default function FloatingChat() {
   function onDragEnd() { drag.current.active = false; }
   function onLauncherClick() {
     if (drag.current.moved) { drag.current.moved = false; return; }
+    if (!state.user) { requireAuth(); return; }
     setOpen((o) => !o);
   }
 

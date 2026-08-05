@@ -12,9 +12,11 @@ import TickerTape from "@/components/TickerTape";
 import MarketBadge from "@/components/MarketBadge";
 import Sparkline from "@/components/Sparkline";
 import FlashValue from "@/components/FlashValue";
+import { useAuthGate } from "@/components/AuthGate";
 
 export default function SearchPage() {
   const { state, getAllLiveStocks, toggleWatch } = useStore();
+  const { requireAuth } = useAuthGate();
   const router = useRouter();
   const [q, setQ] = useState("");
   const [market, setMarket] = useState("ALL");
@@ -102,7 +104,7 @@ export default function SearchPage() {
                     </td>
                     <td className="iv-col-hide-mobile"><Sparkline data={s.history.slice(-14)} positive={s.changePct >= 0} /></td>
                     <td>
-                      <button className="iv-star-btn" onClick={() => toggleWatch(s.ticker)} aria-label="Toggle watchlist">
+                      <button className="iv-star-btn" onClick={() => requireAuth(() => toggleWatch(s.ticker))} aria-label="Toggle watchlist">
                         <Star size={15} fill={watched ? "#ffffff" : "none"} />
                       </button>
                     </td>

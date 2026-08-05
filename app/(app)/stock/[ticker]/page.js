@@ -12,11 +12,13 @@ import Stat from "@/components/Stat";
 import MarketBadge from "@/components/MarketBadge";
 import FlashValue from "@/components/FlashValue";
 import Select from "@/components/Select";
+import { useAuthGate } from "@/components/AuthGate";
 
 export default function StockPage() {
   const { ticker } = useParams();
   const router = useRouter();
   const { state, getLiveStock, toggleWatch, addAlert } = useStore();
+  const { requireAuth } = useAuthGate();
   const [alertPrice, setAlertPrice] = useState("");
   const [alertCondition, setAlertCondition] = useState("above");
 
@@ -41,8 +43,10 @@ export default function StockPage() {
     e.preventDefault();
     const price = Number(alertPrice);
     if (!price) return;
-    addAlert(s.ticker, alertCondition, price);
-    setAlertPrice("");
+    requireAuth(() => {
+      addAlert(s.ticker, alertCondition, price);
+      setAlertPrice("");
+    });
   }
 
   return (
@@ -63,7 +67,7 @@ export default function StockPage() {
                   <h2 style={{ marginTop: 8 }}>{s.name}</h2>
                   <span className="mono muted">{s.ticker} &middot; {s.sector}</span>
                 </div>
-                <button className="iv-star-btn lg" onClick={() => toggleWatch(s.ticker)} aria-label="Toggle watchlist">
+                <button className="iv-star-btn lg" onClick={() => requireAuth(() => toggleWatch(s.ticker))} aria-label="Toggle watchlist">
                   <Star size={18} fill={watched ? "#ffffff" : "none"} />
                 </button>
               </div>
@@ -120,7 +124,7 @@ export default function StockPage() {
               </form>
             </div>
 
-            <button className={"iv-btn-ghost full" + (watched ? "" : "")} onClick={() => toggleWatch(s.ticker)} style={{ marginTop: 0 }}>
+            <button className={"iv-btn-ghost full" + (watched ? "" : "")} onClick={() => requireAuth(() => toggleWatch(s.ticker))} style={{ marginTop: 0 }}>
               <Star size={15} fill={watched ? "#ffffff" : "none"} /> {watched ? "Remove from watchlist" : "Add to watchlist"}
             </button>
           </div>
