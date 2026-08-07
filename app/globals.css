@@ -20,10 +20,10 @@ h1,h2,h3,p,.iv-news-headline,.iv-sub{ overflow-wrap:break-word; }
 /* splash screen \u2014 logo/name comes in first, then the slogan fades in beneath it, before the app appears */
 .iv-splash{ position:fixed; inset:0; z-index:200; background:#ffffff; display:flex; align-items:center; justify-content:center; transition:opacity .6s ease; }
 .iv-splash.out{ opacity:0; pointer-events:none; }
-.iv-splash-inner{ display:flex; flex-direction:column; align-items:center; gap:6px; padding:0 24px; text-align:center; }
+.iv-splash-inner{ display:flex; flex-direction:column; align-items:center; gap:0px; padding:0 24px; text-align:center; }
 .iv-splash-logo{ width:min(70vw, 380px); height:auto; opacity:0; transform:scale(.88) translateY(6px); transition:opacity .7s ease, transform .7s cubic-bezier(.2,.8,.2,1); }
 .iv-splash-logo.show{ opacity:1; transform:scale(1) translateY(0); }
-.iv-splash-slogan{ font-family:var(--font-display); font-weight:600; font-size:clamp(13.5px, 2.4vw, 17px); letter-spacing:.01em; color:#4a4a52; opacity:0; transform:translateY(10px); transition:opacity .7s ease, transform .7s cubic-bezier(.2,.8,.2,1); }
+.iv-splash-slogan{ font-family:var(--font-display); font-weight:600; font-size:clamp(13.5px, 2.4vw, 17px); letter-spacing:.01em; color:#4a4a52; opacity:0; transform:translateY(10px); transition:opacity .7s ease, transform .7s cubic-bezier(.2,.8,.2,1); margin-top:4px; }
 .iv-splash-slogan.show{ opacity:1; transform:translateY(0); }
 .iv-splash-dots i{ display:inline-block; font-style:normal; opacity:.25; animation:iv-splash-dot 1.4s infinite; }
 .iv-splash-dots i:nth-child(1){ animation-delay:0s; }
