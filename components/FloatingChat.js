@@ -1,13 +1,13 @@
 "use client";
 import { useState, useRef, useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { MessageCircle, X, Send, Bot, RotateCcw, Lightbulb } from "lucide-react";
+import { MessageCircle, X, Send, RotateCcw, Lightbulb } from "lucide-react";
 import { getTutorReply } from "@/lib/tutor";
 import { useStore } from "@/lib/store";
 import { useAuthGate } from "./AuthGate";
 
 const SUGGESTIONS = ["What's moving today?", "Explain P/E ratio", "Diversification tips", "How does the NGX work?"];
-const WELCOME = { role: "tutor", text: "Hi, I'm your AI assistant. Ask me about a stock, a market term, or what's moving today." };
+const WELCOME = { role: "tutor", text: "Hi, I'm Askcho, your AI assistant. Ask me about a stock, a market term, or what's moving today." };
 
 export default function FloatingChat() {
   const pathname = usePathname();
@@ -75,9 +75,8 @@ export default function FloatingChat() {
       {open && (
         <div className="iv-floating-chat-panel">
           <div className="iv-floating-chat-head">
-            <span className="iv-floating-chat-avatar"><Bot size={17} /></span>
+            <img src="/askcho-logo.png" alt="Askcho" className="iv-floating-chat-logo" />
             <div className="iv-floating-chat-head-text">
-              <div className="iv-floating-chat-title">AI Assistant</div>
               <div className="iv-floating-chat-status"><span className="dot" /> Online &middot; replies instantly</div>
             </div>
             <button className="iv-icon-btn" onClick={clearChat} aria-label="Clear conversation"><RotateCcw size={14} /></button>

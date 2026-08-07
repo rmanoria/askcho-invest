@@ -8,8 +8,8 @@ export default function Splash() {
   useEffect(() => {
     const t1 = setTimeout(() => setStage("brand"), 150);
     const t2 = setTimeout(() => setStage("slogan"), 1600);
-    const t3 = setTimeout(() => setStage("out"), 6200);
-    const t4 = setTimeout(() => setHidden(true), 6800);
+    const t3 = setTimeout(() => setStage("out"), 8000);
+    const t4 = setTimeout(() => setHidden(true), 8600);
     return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); clearTimeout(t4); };
   }, []);
 

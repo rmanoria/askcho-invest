@@ -20,7 +20,7 @@ h1,h2,h3,p,.iv-news-headline,.iv-sub{ overflow-wrap:break-word; }
 /* splash screen \u2014 logo/name comes in first, then the slogan fades in beneath it, before the app appears */
 .iv-splash{ position:fixed; inset:0; z-index:200; background:#ffffff; display:flex; align-items:center; justify-content:center; transition:opacity .6s ease; }
 .iv-splash.out{ opacity:0; pointer-events:none; }
-.iv-splash-inner{ display:flex; flex-direction:column; align-items:center; gap:20px; padding:0 24px; text-align:center; }
+.iv-splash-inner{ display:flex; flex-direction:column; align-items:center; gap:6px; padding:0 24px; text-align:center; }
 .iv-splash-logo{ width:min(70vw, 380px); height:auto; opacity:0; transform:scale(.88) translateY(6px); transition:opacity .7s ease, transform .7s cubic-bezier(.2,.8,.2,1); }
 .iv-splash-logo.show{ opacity:1; transform:scale(1) translateY(0); }
 .iv-splash-slogan{ font-family:var(--font-display); font-weight:600; font-size:clamp(13.5px, 2.4vw, 17px); letter-spacing:.01em; color:#4a4a52; opacity:0; transform:translateY(10px); transition:opacity .7s ease, transform .7s cubic-bezier(.2,.8,.2,1); }
@@ -52,7 +52,7 @@ h1,h2,h3,p,.iv-news-headline,.iv-sub{ overflow-wrap:break-word; }
 .iv-floating-chat-footer{ display:flex; align-items:center; justify-content:center; gap:6px; padding:11px 14px; font-size:12px; color:var(--muted); border-top:1px solid var(--line); }
 .iv-floating-chat-footer:hover{ color:var(--text); background:rgba(255,255,255,.04); }
 .iv-floating-chat-head{ display:flex; align-items:center; gap:10px; padding:12px 14px; border-bottom:1px solid var(--line); }
-.iv-floating-chat-avatar{ width:32px; height:32px; border-radius:50%; background:#fff; color:#0a0a0d; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+.iv-floating-chat-logo{ height:20px; width:auto; flex-shrink:0; }
 .iv-floating-chat-head-text{ flex:1; min-width:0; }
 .iv-floating-chat-title{ font-weight:600; font-size:13.5px; }
 .iv-floating-chat-status{ display:flex; align-items:center; gap:5px; font-size:11px; color:var(--muted); }
