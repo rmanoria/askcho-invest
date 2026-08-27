@@ -1,11 +1,11 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Search as SearchIcon, Star, Newspaper, LineChart } from "lucide-react";
+import { Search as SearchIcon, Star, Newspaper, LineChart, ExternalLink } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { MARKETS } from "@/lib/stocks";
 import { ALL_INDICES } from "@/lib/markets";
-import { getAllNews } from "@/lib/news";
+import { getGlobalNews, hoursAgo } from "@/lib/news";
 import { formatMoney } from "@/lib/format";
 import Topbar from "@/components/Topbar";
 import TickerTape from "@/components/TickerTape";
@@ -20,8 +20,14 @@ export default function SearchPage() {
   const router = useRouter();
   const [q, setQ] = useState("");
   const [market, setMarket] = useState("ALL");
+  const [news, setNews] = useState([]);
   const stocks = getAllLiveStocks();
   const needle = q.trim().toLowerCase();
+
+  // Real news has no search endpoint, so we search within the general category feed.
+  useEffect(() => {
+    getGlobalNews("general").then(setNews).catch(() => setNews([]));
+  }, []);
 
   const filtered = stocks.filter((s) => {
     const matchesMarket = market === "ALL" || s.market === market;
@@ -31,7 +37,7 @@ export default function SearchPage() {
 
   const indexMatches = needle ? ALL_INDICES.filter((ix) => ix.name.toLowerCase().includes(needle)).slice(0, 6) : [];
   const newsMatches = needle
-    ? getAllNews().filter((n) => n.headline.toLowerCase().includes(needle) || n.source.toLowerCase().includes(needle) || n.ticker.toLowerCase().includes(needle)).slice(0, 6)
+    ? news.filter((n) => n.headline.toLowerCase().includes(needle) || n.source.toLowerCase().includes(needle)).slice(0, 6)
     : [];
 
   return (
@@ -41,7 +47,7 @@ export default function SearchPage() {
       <div className="iv-view">
         <div className="iv-search-bar">
           <SearchIcon size={16} className="muted" />
-          <input placeholder="Search news, markets, indices, tickers and more..." value={q} onChange={(e) => setQ(e.target.value)} />
+          <input placeholder="Search markets, indices, tickers and more..." value={q} onChange={(e) => setQ(e.target.value)} />
         </div>
         <div className="iv-filter-pills">
           {["ALL", ...MARKETS].map((m) => (
@@ -72,13 +78,13 @@ export default function SearchPage() {
             <div className="iv-panel-head"><h3>News</h3><Newspaper size={16} className="muted" /></div>
             <div className="iv-news-list">
               {newsMatches.map((n) => (
-                <div key={n.id} className="iv-news-row" onClick={() => router.push("/stock/" + n.ticker)}>
-                  <div className="iv-news-thumb" style={{ backgroundImage: "url(" + n.image + ")" }} />
+                <a key={n.id} className="iv-news-row" href={n.url} target="_blank" rel="noopener noreferrer">
                   <div className="iv-news-row-body">
-                    <div className="iv-news-headline"><span className="mono muted">{n.ticker}</span> {n.headline}</div>
-                    <div className="iv-sub">{n.source} &middot; {n.hoursAgo}h ago</div>
+                    <div className="iv-news-headline">{n.headline}</div>
+                    <div className="iv-sub">{n.source} &middot; {hoursAgo(n.datetime)}h ago</div>
                   </div>
-                </div>
+                  <ExternalLink size={14} className="muted" />
+                </a>
               ))}
             </div>
           </div>

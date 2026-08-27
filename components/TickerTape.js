@@ -4,8 +4,19 @@ import { formatMoney } from "@/lib/format";
 import FlashValue from "./FlashValue";
 
 export default function TickerTape() {
-  const { getAllLiveStocks } = useStore();
-  const stocks = getAllLiveStocks();
+  const { getFeaturedLiveStocks, stocksLoading } = useStore();
+  const stocks = getFeaturedLiveStocks();
+
+  if (stocksLoading && stocks.length === 0) {
+    return (
+      <div className="iv-ticker">
+        <div className="iv-ticker-track">
+          <span className="iv-ticker-item muted">Loading live prices\u2026</span>
+        </div>
+      </div>
+    );
+  }
+
   const row = [...stocks, ...stocks];
   return (
     <div className="iv-ticker">

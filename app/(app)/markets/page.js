@@ -20,9 +20,9 @@ const SORTS = [
   { value: "alpha", label: "A\u2013Z" }
 ];
 
-// which exchanges belong to which region \u2014 add more regions/exchanges here as they're supported
-const REGION_MARKETS = { Africa: ["NGX"], America: ["NASDAQ", "NYSE"] };
-const REGION_FUNDS = { America: ["ETF"] };
+// which live market feed belongs to which region \u2014 the API only distinguishes
+// NG (Africa) vs Global (everything else priced in USD), no NASDAQ/NYSE/ETF split.
+const REGION_MARKETS = { Africa: ["NGX"], America: ["Global"] };
 
 // instrument types available once a region is picked \u2014 geography-specific types first, then
 // the globally-traded types (commodities, crypto, currencies, futures) which apply everywhere.
@@ -32,7 +32,6 @@ function getInstrumentTypes(region) {
   if (region !== "Global") {
     types.push("Indices");
     if (REGION_MARKETS[region]) types.push("Stocks");
-    if (REGION_FUNDS[region]) types.push("Funds");
     if (["Africa", "America", "Europe"].includes(region)) types.push("Bonds");
   }
   types.push("Currencies", "Commodities", "Cryptocurrency", "Futures");
@@ -42,7 +41,6 @@ function getInstrumentTypes(region) {
 function getInstruments(region, type, stocks) {
   if (type === "Indices") return ALL_INDICES.filter((ix) => ix.region === region);
   if (type === "Stocks") return stocks.filter((s) => (REGION_MARKETS[region] || []).includes(s.market));
-  if (type === "Funds") return stocks.filter((s) => (REGION_FUNDS[region] || []).includes(s.market));
   if (type === "Bonds") return BONDS.filter((b) => b.type === region);
   if (type === "Currencies") return region === "Africa" ? CURRENCIES.filter((c) => c.currency === "NGN") : CURRENCIES;
   if (type === "Commodities") return COMMODITIES;
@@ -58,7 +56,7 @@ function itemPrice(item, isIndex) {
 }
 
 export default function MarketsPage() {
-  const { getAllLiveStocks } = useStore();
+  const { getAllLiveStocks, stocksLoading } = useStore();
   const router = useRouter();
   const [region, setRegion] = useState("Africa");
   const [country, setCountry] = useState("All");
@@ -68,7 +66,7 @@ export default function MarketsPage() {
   const stocks = getAllLiveStocks();
   const types = getInstrumentTypes(region);
   const isIndex = type === "Indices";
-  const clickable = type === "Stocks" || type === "Funds";
+  const clickable = type === "Stocks";
 
   let items = getInstruments(region, type, stocks);
   const nameOf = (item) => (isIndex ? item.name : item.ticker);
@@ -86,6 +84,7 @@ export default function MarketsPage() {
   const best = items.length ? [...items].sort((a, b) => b.changePct - a.changePct)[0] : null;
   const worst = items.length ? [...items].sort((a, b) => a.changePct - b.changePct)[0] : null;
   const subOf = (item) => item.market || item.type || "";
+  const showLoading = type === "Stocks" && stocksLoading && items.length === 0;
 
   return (
     <>
@@ -165,7 +164,7 @@ export default function MarketsPage() {
                   </tr>
                 ))}
                 {items.length === 0 && (
-                  <tr><td colSpan={isIndex ? 4 : 5} className="iv-empty-sm">No {type.toLowerCase()} tracked for {region} yet.</td></tr>
+                  <tr><td colSpan={isIndex ? 4 : 5} className="iv-empty-sm">{showLoading ? "Loading live prices\u2026" : "No " + type.toLowerCase() + " tracked for " + region + " yet."}</td></tr>
                 )}
               </tbody>
             </table>

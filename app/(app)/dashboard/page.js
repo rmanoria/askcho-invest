@@ -1,10 +1,11 @@
 "use client";
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowUpRight, ArrowDownRight, ChevronRight, ChevronLeft as ChevronLeftIcon, Plus } from "lucide-react";
+import { ArrowUpRight, ArrowDownRight, ChevronRight, ChevronLeft as ChevronLeftIcon, Plus, ExternalLink } from "lucide-react";
 import { useStore } from "@/lib/store";
-import { getAllNews } from "@/lib/news";
+import { getGlobalNews, getNgNews, hoursAgo } from "@/lib/news";
+import { NEWS_CATEGORIES } from "@/lib/api";
 import { ALL_INDICES, getCalendarEvents } from "@/lib/markets";
 import { formatMoney, formatDate } from "@/lib/format";
 import Topbar from "@/components/Topbar";
@@ -17,39 +18,34 @@ import { useAuthGate } from "@/components/AuthGate";
 
 const INSIGHT_TABS = [
   { id: "movers", label: "Top movers", short: "Movers" },
-  { id: "under", label: "Most undervalued", short: "Undervalued" },
-  { id: "over", label: "Most overvalued", short: "Overvalued" },
+  { id: "gainers", label: "Top gainers", short: "Gainers" },
+  { id: "losers", label: "Top losers", short: "Losers" },
   { id: "calendar", label: "Calendar", short: "Calendar" }
 ];
 
-const NEWS_TABS = [
-  { id: "featured", label: "Featured", short: "Featured" },
-  { id: "breaking", label: "Breaking", short: "Breaking" },
-  { id: "popular", label: "Most popular", short: "Popular" },
-  { id: "crypto", label: "Cryptocurrency", short: "Crypto" }
-];
-
-const NEWS_REGIONS = ["All", "Africa", "America", "Europe", "Asia", "Global"];
-// countries available once "Africa" is picked as the region \u2014 add more as data is added for them
-const AFRICA_COUNTRIES = ["All", "Nigeria"];
-
-// NGX-listed names are Africa, everything else in this dataset (NASDAQ/NYSE/ETF) is America
-function marketRegion(market) {
-  return market === "NGX" ? "Africa" : "America";
-}
+// News tabs mirror the real backend's categories, plus a dedicated NG tab.
+const NEWS_TABS = [{ id: "ng", label: "Nigeria", short: "NG" }, ...NEWS_CATEGORIES.map((c) => ({ id: c.id, label: c.label, short: c.label }))];
 
 export default function DashboardPage() {
-  const { state, getAllLiveStocks, getLiveIndexes, toggleWatch, addAlert } = useStore();
+  const { state, getAllLiveStocks, getFeaturedLiveStocks, getLiveIndexes, toggleWatch, addAlert } = useStore();
   const { requireAuth } = useAuthGate();
   const router = useRouter();
   const [insightTab, setInsightTab] = useState("movers");
   const [insightDir, setInsightDir] = useState("next");
-  const [newsTab, setNewsTab] = useState("featured");
-  const [newsRegion, setNewsRegion] = useState("All");
-  const [newsCountry, setNewsCountry] = useState("All");
+  const [newsTab, setNewsTab] = useState("general");
+  const [news, setNews] = useState([]);
+  const [newsLoading, setNewsLoading] = useState(true);
   const [watchModalStock, setWatchModalStock] = useState(null);
   const insightIndex = INSIGHT_TABS.findIndex((t) => t.id === insightTab);
   const touchX = useRef(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    setNewsLoading(true);
+    const loader = newsTab === "ng" ? getNgNews() : getGlobalNews(newsTab);
+    loader.then((items) => { if (!cancelled) setNews(items); }).finally(() => { if (!cancelled) setNewsLoading(false); });
+    return () => { cancelled = true; };
+  }, [newsTab]);
 
   function goToInsight(id) {
     const targetIndex = INSIGHT_TABS.findIndex((t) => t.id === id);
@@ -67,28 +63,18 @@ export default function DashboardPage() {
     touchX.current = null;
   }
   const stocks = getAllLiveStocks();
+  const featured = getFeaturedLiveStocks();
   const indexes = getLiveIndexes();
   const summaryIndexes = [...indexes, ...ALL_INDICES.slice(3, 6)];
 
-  const news = getAllNews();
-  const stockByTicker = Object.fromEntries(stocks.map((s) => [s.ticker, s]));
-  let filteredNews =
-    newsTab === "breaking" ? news.filter((n) => n.breaking) :
-    newsTab === "popular" ? [...news].sort((a, b) => Math.abs((stockByTicker[b.ticker] || {}).changePct || 0) - Math.abs((stockByTicker[a.ticker] || {}).changePct || 0)) :
-    newsTab === "crypto" ? [] :
-    news;
-  if (newsRegion !== "All") filteredNews = filteredNews.filter((n) => marketRegion(n.market) === newsRegion);
-  if (newsRegion === "Africa" && newsCountry === "Nigeria") filteredNews = filteredNews.filter((n) => n.market === "NGX");
-  const [hero, ...restNews] = filteredNews;
+  const [hero, ...restNews] = news;
   const newsCards = restNews.slice(0, 3);
 
   const sortedByChange = [...stocks].sort((a, b) => Math.abs(b.changePct) - Math.abs(a.changePct));
   const movers = sortedByChange.slice(0, 6);
-  const topGainers = [...stocks].sort((a, b) => b.changePct - a.changePct).slice(0, 4);
-
-  const equities = stocks.filter((s) => s.market !== "ETF");
-  const undervalued = [...equities].sort((a, b) => a.peRatio - b.peRatio).slice(0, 5);
-  const overvalued = [...equities].sort((a, b) => b.peRatio - a.peRatio).slice(0, 5);
+  const gainers = [...stocks].sort((a, b) => b.changePct - a.changePct).slice(0, 6);
+  const losers = [...stocks].sort((a, b) => a.changePct - b.changePct).slice(0, 6);
+  const topGainers = gainers.slice(0, 4);
 
   const events = getCalendarEvents().slice(0, 6);
 
@@ -109,40 +95,32 @@ export default function DashboardPage() {
                 </button>
               ))}
             </div>
-            <div className="iv-home-news-filters">
-              <Select compact label="Region" shortLabel="Reg" value={newsRegion} onChange={(v) => { setNewsRegion(v); setNewsCountry("All"); }} options={NEWS_REGIONS} />
-              {newsRegion === "Africa" && (
-                <Select compact label="Country" shortLabel="Ctry" value={newsCountry} onChange={setNewsCountry} options={AFRICA_COUNTRIES} />
-              )}
-            </div>
           </div>
 
-          {!hero && (
+          {!newsLoading && !hero && (
             <p className="iv-empty-sm">No {NEWS_TABS.find((t) => t.id === newsTab).label.toLowerCase()} news right now.</p>
           )}
+          {newsLoading && <p className="iv-empty-sm">Loading news\u2026</p>}
 
           {hero && (
-            <div className="iv-home-hero" onClick={() => router.push("/stock/" + hero.ticker)}>
-              <div className="iv-home-hero-image" style={{ backgroundImage: "url(" + hero.image + ")" }} />
-              <div className="iv-home-hero-scrim" />
-              <div className="iv-home-hero-body">
-                <span className="iv-home-hero-label">Featured</span>
+            <a className="iv-home-hero" href={hero.url} target="_blank" rel="noopener noreferrer" style={{ backgroundImage: "none" }}>
+              <div className="iv-home-hero-body" style={{ position: "static" }}>
+                <span className="iv-home-hero-label">{hero.source} <ExternalLink size={12} /></span>
                 <h2>{hero.headline}</h2>
-                <div className="iv-sub">{hero.source} &middot; {hero.hoursAgo}h ago</div>
+                <div className="iv-sub">{hoursAgo(hero.datetime)}h ago</div>
               </div>
-            </div>
+            </a>
           )}
 
           {newsCards.length > 0 && (
             <div className="iv-home-news-list">
               {newsCards.map((n) => (
-                <div key={n.id} className="iv-news-row" onClick={() => router.push("/stock/" + n.ticker)}>
-                  <div className="iv-news-thumb" style={{ backgroundImage: "url(" + n.image + ")" }} />
+                <a key={n.id} className="iv-news-row" href={n.url} target="_blank" rel="noopener noreferrer">
                   <div className="iv-news-row-body">
                     <div className="iv-news-headline">{n.headline}</div>
-                    <div className="iv-sub">{n.source} &middot; {n.hoursAgo}h ago</div>
+                    <div className="iv-sub">{n.source} &middot; {hoursAgo(n.datetime)}h ago</div>
                   </div>
-                </div>
+                </a>
               ))}
             </div>
           )}
@@ -153,7 +131,7 @@ export default function DashboardPage() {
           <div className="iv-panel-head">
             <h3>Markets summary</h3>
             <div style={{ display: "flex", gap: 8 }}>
-              <button className="iv-btn-ghost sm" onClick={() => requireAuth(() => setWatchModalStock(topGainers[0] || stocks[0]))}><Plus size={14} /> Watch &amp; alert</button>
+              <button className="iv-btn-ghost sm" onClick={() => requireAuth(() => setWatchModalStock(topGainers[0] || featured[0]))}><Plus size={14} /> Watch &amp; alert</button>
               <Link href="/markets" className="iv-btn-ghost sm">All markets <ChevronRight size={14} /></Link>
             </div>
           </div>
@@ -171,7 +149,7 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Market insights \u2014 movers / undervalued / overvalued / calendar as a swipeable 3D card carousel */}
+        {/* Market insights \u2014 movers / gainers / losers / calendar as a swipeable 3D card carousel */}
         <div className="iv-panel iv-insight-panel">
           <div className="iv-insight-head">
             <div className="iv-news-tabs iv-home-news-tabs">
@@ -207,14 +185,14 @@ export default function DashboardPage() {
                 </table></div>
               )}
 
-              {insightTab === "under" && (
+              {insightTab === "gainers" && (
                 <div className="iv-table-wrap"><table className="iv-table">
-                  <thead><tr><th>Stock</th><th>P/E</th><th>Price</th></tr></thead>
+                  <thead><tr><th>Stock</th><th>Change</th><th>Price</th></tr></thead>
                   <tbody>
-                    {undervalued.map((s) => (
+                    {gainers.map((s) => (
                       <tr key={s.ticker} onClick={() => router.push("/stock/" + s.ticker)} style={{ cursor: "pointer" }}>
                         <td><span className="mono">{s.ticker}</span><span className="iv-sub"> {s.name}</span></td>
-                        <td className="mono iv-pos-text">{s.peRatio}</td>
+                        <td className="mono iv-pos-text">+{s.changePct.toFixed(2)}%</td>
                         <td className="mono">{formatMoney(s.price, s.currency)}</td>
                       </tr>
                     ))}
@@ -222,14 +200,14 @@ export default function DashboardPage() {
                 </table></div>
               )}
 
-              {insightTab === "over" && (
+              {insightTab === "losers" && (
                 <div className="iv-table-wrap"><table className="iv-table">
-                  <thead><tr><th>Stock</th><th>P/E</th><th>Price</th></tr></thead>
+                  <thead><tr><th>Stock</th><th>Change</th><th>Price</th></tr></thead>
                   <tbody>
-                    {overvalued.map((s) => (
+                    {losers.map((s) => (
                       <tr key={s.ticker} onClick={() => router.push("/stock/" + s.ticker)} style={{ cursor: "pointer" }}>
                         <td><span className="mono">{s.ticker}</span><span className="iv-sub"> {s.name}</span></td>
-                        <td className="mono iv-neg-text">{s.peRatio}</td>
+                        <td className="mono iv-neg-text">{s.changePct.toFixed(2)}%</td>
                         <td className="mono">{formatMoney(s.price, s.currency)}</td>
                       </tr>
                     ))}
@@ -266,8 +244,8 @@ export default function DashboardPage() {
       <WatchAlertModal
         open={!!watchModalStock}
         stock={watchModalStock}
-        stocks={stocks}
-        onChangeStock={(ticker) => setWatchModalStock(stocks.find((s) => s.ticker === ticker))}
+        stocks={featured}
+        onChangeStock={(ticker) => setWatchModalStock(featured.find((s) => s.ticker === ticker))}
         onClose={() => setWatchModalStock(null)}
         watched={watchModalStock ? state.watchlist.includes(watchModalStock.ticker) : false}
         onToggleWatch={toggleWatch}

@@ -1,25 +1,29 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { BellRing } from "lucide-react";
 import { useStore } from "@/lib/store";
-import { STOCKS } from "@/lib/stocks";
 import { formatDateTime } from "@/lib/format";
 import Topbar from "@/components/Topbar";
 import TickerTape from "@/components/TickerTape";
 import Select from "@/components/Select";
 
 export default function AlertsPage() {
-  const { state, addAlert, removeAlert } = useStore();
+  const { state, addAlert, removeAlert, getFeaturedLiveStocks } = useStore();
   const router = useRouter();
-  const [ticker, setTicker] = useState(STOCKS[0].ticker);
+  const stocks = getFeaturedLiveStocks();
+  const [ticker, setTicker] = useState("");
   const [condition, setCondition] = useState("above");
   const [price, setPrice] = useState("");
+
+  useEffect(() => {
+    if (!ticker && stocks.length) setTicker(stocks[0].ticker);
+  }, [stocks, ticker]);
 
   function submit(e) {
     e.preventDefault();
     const p = Number(price);
-    if (!p) return;
+    if (!p || !ticker) return;
     addAlert(ticker, condition, p);
     setPrice("");
   }
@@ -34,31 +38,35 @@ export default function AlertsPage() {
       <div className="iv-view">
         <div className="iv-panel">
           <div className="iv-panel-head"><h3>Set a price alert</h3><BellRing size={16} className="muted" /></div>
-          <form onSubmit={submit}>
-            <div className="iv-form-row">
-              <label className="iv-field">
-                <span>Stock</span>
-                <Select
-                  value={ticker}
-                  onChange={setTicker}
-                  options={STOCKS.map((s) => ({ value: s.ticker, label: s.ticker + " \u2014 " + s.name }))}
-                />
-              </label>
-              <label className="iv-field">
-                <span>Condition</span>
-                <Select
-                  value={condition}
-                  onChange={setCondition}
-                  options={[{ value: "above", label: "Rises above" }, { value: "below", label: "Falls below" }]}
-                />
-              </label>
-              <label className="iv-field">
-                <span>Target price</span>
-                <input type="number" step="0.01" min="0" value={price} onChange={(e) => setPrice(e.target.value)} placeholder="0.00" />
-              </label>
-            </div>
-            <button type="submit" className="iv-btn-primary">Create alert</button>
-          </form>
+          {stocks.length === 0 ? (
+            <p className="iv-empty-sm">Loading live prices\u2026</p>
+          ) : (
+            <form onSubmit={submit}>
+              <div className="iv-form-row">
+                <label className="iv-field">
+                  <span>Stock</span>
+                  <Select
+                    value={ticker}
+                    onChange={setTicker}
+                    options={stocks.map((s) => ({ value: s.ticker, label: s.ticker + " \u2014 " + s.name }))}
+                  />
+                </label>
+                <label className="iv-field">
+                  <span>Condition</span>
+                  <Select
+                    value={condition}
+                    onChange={setCondition}
+                    options={[{ value: "above", label: "Rises above" }, { value: "below", label: "Falls below" }]}
+                  />
+                </label>
+                <label className="iv-field">
+                  <span>Target price</span>
+                  <input type="number" step="0.01" min="0" value={price} onChange={(e) => setPrice(e.target.value)} placeholder="0.00" />
+                </label>
+              </div>
+              <button type="submit" className="iv-btn-primary">Create alert</button>
+            </form>
+          )}
         </div>
 
         <div className="iv-panel">

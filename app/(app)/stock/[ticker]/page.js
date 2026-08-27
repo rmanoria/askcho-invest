@@ -1,10 +1,10 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft, ArrowUpRight, ArrowDownRight, Star, Newspaper, BellRing } from "lucide-react";
+import { ArrowLeft, ArrowUpRight, ArrowDownRight, Star, Newspaper, BellRing, ExternalLink } from "lucide-react";
 import { useStore } from "@/lib/store";
-import { getMockNews } from "@/lib/stocks";
-import { formatMoney, formatCompact } from "@/lib/format";
+import { getGlobalNews } from "@/lib/news";
+import { formatMoney } from "@/lib/format";
 import Topbar from "@/components/Topbar";
 import TickerTape from "@/components/TickerTape";
 import PriceChart from "@/components/PriceChart";
@@ -17,27 +17,31 @@ import { useAuthGate } from "@/components/AuthGate";
 export default function StockPage() {
   const { ticker } = useParams();
   const router = useRouter();
-  const { state, getLiveStock, toggleWatch, addAlert } = useStore();
+  const { state, getLiveStock, toggleWatch, addAlert, stocksLoading } = useStore();
   const { requireAuth } = useAuthGate();
   const [alertPrice, setAlertPrice] = useState("");
   const [alertCondition, setAlertCondition] = useState("above");
+  const [marketNews, setMarketNews] = useState([]);
+
+  useEffect(() => {
+    getGlobalNews("general").then(setMarketNews).catch(() => setMarketNews([]));
+  }, []);
 
   const s = getLiveStock(String(ticker).toUpperCase());
+
   if (!s) {
     return (
       <>
         <Topbar title="Stock not found" />
-        <div className="iv-view"><p className="iv-empty-sm">We couldn't find that ticker.</p></div>
+        <div className="iv-view">
+          <p className="iv-empty-sm">{stocksLoading ? "Loading live prices\u2026" : "We couldn't find that ticker."}</p>
+        </div>
       </>
     );
   }
 
   const watched = state.watchlist.includes(s.ticker);
-  const last5 = s.history.slice(-5).map((p) => p.price);
-  const dayHigh = Math.max(...last5);
-  const dayLow = Math.min(...last5);
-  const prevClose = s.history[s.history.length - 2] ? s.history[s.history.length - 2].price : s.price;
-  const news = getMockNews(s.ticker);
+  const hasOHLC = s.dayHigh !== null && s.dayLow !== null;
 
   function submitAlert(e) {
     e.preventDefault();
@@ -81,23 +85,24 @@ export default function StockPage() {
               <PriceChart history={s.history} positive={s.changePct >= 0} currency={s.currency} height={220} />
 
               <div className="iv-stat-strip small">
-                <Stat label="Prev close" value={formatMoney(prevClose, s.currency)} />
-                <Stat label="Day high" value={formatMoney(dayHigh, s.currency)} />
-                <Stat label="Day low" value={formatMoney(dayLow, s.currency)} />
-                <Stat label="P/E ratio" value={s.peRatio} info="Price divided by earnings per share. Compares a stock's price to its profit." />
-                <Stat label="Market cap" value={formatCompact(s.marketCap, s.currency)} info="Share price times total shares outstanding \u2014 a measure of company size." />
+                <Stat label="Prev close" value={formatMoney(s.prevClose, s.currency)} />
+                {hasOHLC && <Stat label="Day high" value={formatMoney(s.dayHigh, s.currency)} />}
+                {hasOHLC && <Stat label="Day low" value={formatMoney(s.dayLow, s.currency)} />}
+                {hasOHLC && <Stat label="Open" value={formatMoney(s.openPrice, s.currency)} />}
               </div>
             </div>
 
             <div className="iv-panel">
-              <div className="iv-panel-head"><h3>News</h3><Newspaper size={16} className="muted" /></div>
+              <div className="iv-panel-head"><h3>Market news</h3><Newspaper size={16} className="muted" /></div>
+              <p className="iv-sub" style={{ marginBottom: 10 }}>General market headlines \u2014 not specific to {s.ticker}.</p>
               <div className="iv-notif-list">
-                {news.map((n) => (
-                  <div key={n.id} className="iv-notif-item">
-                    <div>{n.headline}</div>
-                    <div className="iv-sub">{n.source} &middot; {n.hoursAgo}h ago</div>
-                  </div>
+                {marketNews.slice(0, 5).map((n) => (
+                  <a key={n.id} className="iv-notif-item" href={n.url} target="_blank" rel="noopener noreferrer" style={{ display: "block" }}>
+                    <div>{n.headline} <ExternalLink size={12} className="muted" /></div>
+                    <div className="iv-sub">{n.source}</div>
+                  </a>
                 ))}
+                {marketNews.length === 0 && <p className="iv-empty-sm">No market news available right now.</p>}
               </div>
             </div>
           </div>
