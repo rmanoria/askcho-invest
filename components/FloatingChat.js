@@ -1,5 +1,5 @@
 "use client";
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { X, Send, RotateCcw, Lightbulb } from "lucide-react";
 import { getTutorReply } from "@/lib/tutor";
@@ -8,6 +8,9 @@ import { useAuthGate } from "./AuthGate";
 
 const SUGGESTIONS = ["What's moving today?", "Explain P/E ratio", "Diversification tips", "How does the NGX work?"];
 const WELCOME = { role: "tutor", text: "Hi, I'm Askcho, your AI assistant. Ask me about a stock, a market term, or what's moving today." };
+
+const BTN_SIZE = 50;
+const EDGE_MARGIN = 8;
 
 export default function FloatingChat() {
   const pathname = usePathname();
@@ -18,13 +21,69 @@ export default function FloatingChat() {
   const [messages, setMessages] = useState([WELCOME]);
   const [input, setInput] = useState("");
   const [typing, setTyping] = useState(false);
-  const [pos, setPos] = useState({ x: 0, y: 0 });
+  // pos is distance from the right/bottom edges of the viewport \u2014 keeping the button
+  // bottom-anchored means the chat panel naturally grows upward from wherever it sits.
+  const [pos, setPos] = useState({ right: 18, bottom: 88 });
   const logRef = useRef(null);
-  const drag = useRef({ active: false, moved: false, startX: 0, startY: 0, origX: 0, origY: 0 });
+  const drag = useRef({ active: false, moved: false, startX: 0, startY: 0, origRight: 0, origBottom: 0 });
 
   useEffect(() => {
     if (logRef.current) logRef.current.scrollTop = logRef.current.scrollHeight;
   }, [messages, typing]);
+
+  const clamp = useCallback((right, bottom) => {
+    const maxRight = Math.max(EDGE_MARGIN, window.innerWidth - BTN_SIZE - EDGE_MARGIN);
+    const maxBottom = Math.max(EDGE_MARGIN, window.innerHeight - BTN_SIZE - EDGE_MARGIN);
+    return {
+      right: Math.min(Math.max(right, EDGE_MARGIN), maxRight),
+      bottom: Math.min(Math.max(bottom, EDGE_MARGIN), maxBottom)
+    };
+  }, []);
+
+  // keep the button on-screen if the viewport is resized/rotated after being dragged
+  useEffect(() => {
+    function onResize() { setPos((p) => clamp(p.right, p.bottom)); }
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, [clamp]);
+
+  const onDragMove = useCallback((e) => {
+    const d = drag.current;
+    if (!d.active) return;
+    const point = e.touches ? e.touches[0] : e;
+    const dx = point.clientX - d.startX;
+    const dy = point.clientY - d.startY;
+    if (Math.abs(dx) > 5 || Math.abs(dy) > 5) d.moved = true;
+    if (!d.moved) return;
+    if (e.cancelable) e.preventDefault();
+    setPos(clamp(d.origRight - dx, d.origBottom - dy));
+  }, [clamp]);
+
+  const onDragEnd = useCallback(() => {
+    drag.current.active = false;
+    document.removeEventListener("mousemove", onDragMove);
+    document.removeEventListener("mouseup", onDragEnd);
+    document.removeEventListener("touchmove", onDragMove);
+    document.removeEventListener("touchend", onDragEnd);
+  }, [onDragMove]);
+
+  // drag tracking lives on `document`, not the button itself \u2014 otherwise a fast
+  // mouse/finger movement leaves the button's small hit area and the drag silently stops.
+  function onDragStart(e) {
+    const point = e.touches ? e.touches[0] : e;
+    drag.current = { active: true, moved: false, startX: point.clientX, startY: point.clientY, origRight: pos.right, origBottom: pos.bottom };
+    document.addEventListener("mousemove", onDragMove);
+    document.addEventListener("mouseup", onDragEnd);
+    document.addEventListener("touchmove", onDragMove, { passive: false });
+    document.addEventListener("touchend", onDragEnd);
+  }
+
+  useEffect(() => () => {
+    document.removeEventListener("mousemove", onDragMove);
+    document.removeEventListener("mouseup", onDragEnd);
+    document.removeEventListener("touchmove", onDragMove);
+    document.removeEventListener("touchend", onDragEnd);
+  }, [onDragMove, onDragEnd]);
 
   if (pathname === "/ideas") return null;
 
@@ -42,23 +101,6 @@ export default function FloatingChat() {
 
   function clearChat() { setMessages([WELCOME]); }
 
-  function onDragStart(e) {
-    const point = e.touches ? e.touches[0] : e;
-    drag.current = { active: true, moved: false, startX: point.clientX, startY: point.clientY, origX: pos.x, origY: pos.y };
-  }
-  function onDragMove(e) {
-    if (!drag.current.active) return;
-    const point = e.touches ? e.touches[0] : e;
-    const dx = point.clientX - drag.current.startX;
-    const dy = point.clientY - drag.current.startY;
-    if (Math.abs(dx) > 5 || Math.abs(dy) > 5) drag.current.moved = true;
-    if (!drag.current.moved) return;
-    const margin = 8;
-    const nextX = Math.min(Math.max(drag.current.origX + dx, -(window.innerWidth - 66)), margin);
-    const nextY = Math.min(Math.max(drag.current.origY + dy, -(window.innerHeight - 150)), margin);
-    setPos({ x: nextX, y: nextY });
-  }
-  function onDragEnd() { drag.current.active = false; }
   function onLauncherClick() {
     if (drag.current.moved) { drag.current.moved = false; return; }
     if (!state.user) { requireAuth(); return; }
@@ -68,9 +110,7 @@ export default function FloatingChat() {
   return (
     <div
       className="iv-floating-chat"
-      style={{ transform: "translate(" + pos.x + "px," + pos.y + "px)" }}
-      onMouseMove={onDragMove} onMouseUp={onDragEnd} onMouseLeave={onDragEnd}
-      onTouchMove={onDragMove} onTouchEnd={onDragEnd}
+      style={{ right: pos.right + "px", bottom: pos.bottom + "px" }}
     >
       {open && (
         <div className="iv-floating-chat-panel">
@@ -115,7 +155,7 @@ export default function FloatingChat() {
         onTouchStart={onDragStart}
         aria-label="Open AI chat assistant, draggable"
       >
-        {open ? <X size={22} /> : <img src="/askcho-logo.png" alt="Askcho" className="iv-floating-chat-btn-logo" draggable={false} />}
+        {open ? <X size={20} /> : <img src="/askcho-logo.png" alt="Askcho" className="iv-floating-chat-btn-logo" draggable={false} />}
         {!open && <span className="iv-floating-chat-ping" />}
       </button>
     </div>
