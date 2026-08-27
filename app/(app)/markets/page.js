@@ -12,7 +12,7 @@ import Select from "@/components/Select";
 
 const REGIONS = ["Africa", "America", "Europe", "Asia", "Global"];
 // countries available once "Africa" is picked as the region \u2014 add more as data is added for them
-const AFRICA_COUNTRIES = ["All", "Nigeria"];
+const AFRICA_COUNTRIES = ["Nigeria", "All"];
 const SORTS = [
   { value: "default", label: "Default" },
   { value: "change_desc", label: "High to low" },
@@ -59,7 +59,7 @@ export default function MarketsPage() {
   const { getAllLiveStocks, stocksLoading } = useStore();
   const router = useRouter();
   const [region, setRegion] = useState("Africa");
-  const [country, setCountry] = useState("All");
+  const [country, setCountry] = useState("Nigeria");
   const [type, setType] = useState("Indices");
   const [sort, setSort] = useState("default");
 
@@ -76,7 +76,7 @@ export default function MarketsPage() {
 
   function handleRegionChange(v) {
     setRegion(v);
-    setCountry("All");
+    setCountry(v === "Africa" ? "Nigeria" : "All");
     setType(getInstrumentTypes(v)[0]);
   }
 
@@ -93,12 +93,12 @@ export default function MarketsPage() {
       <div className="iv-view">
 
         <div className="iv-filter-bar">
-          <Select compact label="Region" shortLabel="Reg" value={region} onChange={handleRegionChange} options={REGIONS} />
+          <Select compact label="Region" value={region} onChange={handleRegionChange} options={REGIONS} />
           {region === "Africa" && (
-            <Select compact label="Country" shortLabel="Ctry" value={country} onChange={setCountry} options={AFRICA_COUNTRIES} />
+            <Select compact label="Country" value={country} onChange={setCountry} options={AFRICA_COUNTRIES} />
           )}
-          <Select compact label="Type" shortLabel="Type" value={type} onChange={setType} options={types} />
-          <Select compact label="Sort" shortLabel="Sort" value={sort} onChange={setSort} options={SORTS} />
+          <Select compact label="Type" value={type} onChange={setType} options={types} />
+          <Select compact label="Sort" value={sort} onChange={setSort} options={SORTS} />
         </div>
 
         <div className="iv-panel">

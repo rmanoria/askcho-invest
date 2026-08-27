@@ -1,7 +1,7 @@
 "use client";
 import { useState, useRef, useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { MessageCircle, X, Send, RotateCcw, Lightbulb } from "lucide-react";
+import { X, Send, RotateCcw, Lightbulb } from "lucide-react";
 import { getTutorReply } from "@/lib/tutor";
 import { useStore } from "@/lib/store";
 import { useAuthGate } from "./AuthGate";
@@ -115,7 +115,7 @@ export default function FloatingChat() {
         onTouchStart={onDragStart}
         aria-label="Open AI chat assistant, draggable"
       >
-        {open ? <X size={22} /> : <MessageCircle size={22} />}
+        {open ? <X size={22} /> : <img src="/askcho-logo.png" alt="Askcho" className="iv-floating-chat-btn-logo" draggable={false} />}
         {!open && <span className="iv-floating-chat-ping" />}
       </button>
     </div>

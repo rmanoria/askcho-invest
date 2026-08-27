@@ -49,8 +49,8 @@ export default function NewsPage() {
       <div className="iv-view iv-news-view">
 
         <div className="iv-filter-bar">
-          <Select compact label="Category" shortLabel="Cat" value={tab} onChange={setTab} options={TABS.map((t) => ({ value: t.id, label: t.label }))} />
-          <Select compact label="Source" shortLabel="Src" value={sourceFilter} onChange={setSourceFilter} options={sources} />
+          <Select compact label="Category" value={tab} onChange={setTab} options={TABS.map((t) => ({ value: t.id, label: t.label }))} />
+          <Select compact label="Source" value={sourceFilter} onChange={setSourceFilter} options={sources} />
         </div>
 
         {loading && <p className="iv-empty-sm">Loading news\u2026</p>}
