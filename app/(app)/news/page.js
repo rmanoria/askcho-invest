@@ -2,25 +2,35 @@
 import { useState, useEffect } from "react";
 import { ExternalLink } from "lucide-react";
 import { getGlobalNews, getNgNews, hoursAgo, groupLabel } from "@/lib/news";
-import { NEWS_CATEGORIES } from "@/lib/api";
 import Topbar from "@/components/Topbar";
 import TickerTape from "@/components/TickerTape";
 import Select from "@/components/Select";
+import ArticleViewerModal from "@/components/ArticleViewerModal";
 
-const TABS = [{ id: "ng", label: "Nigeria" }, ...NEWS_CATEGORIES.map((c) => ({ id: c.id, label: c.label }))];
+// Original category tab labels, each now wired to a real backend source
+// (forex isn't surfaced as a quick tab here, same as on the Dashboard \u2014
+// it's still reachable, just not one of these four).
+const TABS = [
+  { id: "featured", label: "Featured", source: "general" },
+  { id: "breaking", label: "Breaking", source: "merger" },
+  { id: "ngx", label: "NGX", source: "ng" },
+  { id: "global", label: "Global", source: "crypto" }
+];
 
 export default function NewsPage() {
-  const [tab, setTab] = useState("general");
+  const [tab, setTab] = useState("featured");
   const [sourceFilter, setSourceFilter] = useState("All");
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  const [viewerArticle, setViewerArticle] = useState(null);
 
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
     setError(false);
-    const loader = tab === "ng" ? getNgNews() : getGlobalNews(tab);
+    const source = TABS.find((t) => t.id === tab).source;
+    const loader = source === "ng" ? getNgNews() : getGlobalNews(source);
     loader
       .then((data) => { if (!cancelled) setItems(data); })
       .catch(() => { if (!cancelled) setError(true); })
@@ -60,7 +70,7 @@ export default function NewsPage() {
         )}
 
         {!loading && hero && (
-          <a className="iv-panel iv-news-hero" href={hero.url} target="_blank" rel="noopener noreferrer">
+          <a className="iv-panel iv-news-hero" href={hero.url} onClick={(e) => { e.preventDefault(); setViewerArticle(hero); }}>
             {hero.image && <div className="iv-news-hero-image" style={{ backgroundImage: "url(" + hero.image + ")" }} />}
             <div className="iv-news-hero-meta">
               <span className="iv-sub">{hero.source} <ExternalLink size={12} /></span>
@@ -76,7 +86,7 @@ export default function NewsPage() {
             <div className="iv-eyebrow">{group.label.toUpperCase()}</div>
             <div className="iv-news-list">
               {group.items.map((n) => (
-                <a key={n.id} className="iv-news-row" href={n.url} target="_blank" rel="noopener noreferrer">
+                <a key={n.id} className="iv-news-row" href={n.url} onClick={(e) => { e.preventDefault(); setViewerArticle(n); }}>
                   {n.image && <div className="iv-news-thumb" style={{ backgroundImage: "url(" + n.image + ")" }} />}
                   <div className="iv-news-row-body">
                     <div className="iv-news-headline">{n.headline}</div>
@@ -90,6 +100,7 @@ export default function NewsPage() {
         ))}
         {!loading && !error && groups.length === 0 && !hero && <p className="iv-empty-sm">No news available for this category right now.</p>}
       </div>
+      <ArticleViewerModal article={viewerArticle} onClose={() => setViewerArticle(null)} />
     </>
   );
 }

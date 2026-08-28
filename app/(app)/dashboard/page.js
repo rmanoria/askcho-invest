@@ -12,6 +12,7 @@ import TickerTape from "@/components/TickerTape";
 import MarketBadge from "@/components/MarketBadge";
 import FlashValue from "@/components/FlashValue";
 import WatchAlertModal from "@/components/WatchAlertModal";
+import ArticleViewerModal from "@/components/ArticleViewerModal";
 import Select from "@/components/Select";
 import { useAuthGate } from "@/components/AuthGate";
 
@@ -22,12 +23,14 @@ const INSIGHT_TABS = [
   { id: "calendar", label: "Calendar", short: "Calendar" }
 ];
 
-// Original dashboard tab labels, each now wired to a real backend source:
-// Featured -> general market news, Breaking -> NG feed, Most popular -> mergers, Cryptocurrency -> crypto.
+// Region/Country is the real NG-vs-Global split; Category tabs then pick which
+// real category to show within the Global feed (all four map cleanly, no hijacking).
+const NEWS_REGIONS = ["Africa", "America", "Europe", "Asia", "Global"];
+const AFRICA_COUNTRIES = ["Nigeria", "All"];
 const NEWS_TABS = [
   { id: "featured", label: "Featured", short: "Featured", source: "general" },
-  { id: "breaking", label: "Breaking", short: "Breaking", source: "ng" },
-  { id: "popular", label: "Most popular", short: "Popular", source: "merger" },
+  { id: "breaking", label: "Breaking", short: "Breaking", source: "merger" },
+  { id: "popular", label: "Most popular", short: "Popular", source: "forex" },
   { id: "crypto", label: "Cryptocurrency", short: "Crypto", source: "crypto" }
 ];
 
@@ -38,20 +41,26 @@ export default function DashboardPage() {
   const [insightTab, setInsightTab] = useState("movers");
   const [insightDir, setInsightDir] = useState("next");
   const [newsTab, setNewsTab] = useState("featured");
+  const [newsRegion, setNewsRegion] = useState("Africa");
+  const [newsCountry, setNewsCountry] = useState("Nigeria");
   const [news, setNews] = useState([]);
   const [newsLoading, setNewsLoading] = useState(true);
   const [watchModalStock, setWatchModalStock] = useState(null);
+  const [viewerArticle, setViewerArticle] = useState(null);
   const insightIndex = INSIGHT_TABS.findIndex((t) => t.id === insightTab);
   const touchX = useRef(null);
+  // Nigeria is the only African news source available, so Region: Africa always
+  // means the NG feed regardless of the Country sub-choice.
+  const isNg = newsRegion === "Africa";
 
   useEffect(() => {
     let cancelled = false;
     setNewsLoading(true);
     const source = NEWS_TABS.find((t) => t.id === newsTab).source;
-    const loader = source === "ng" ? getNgNews() : getGlobalNews(source);
+    const loader = isNg ? getNgNews() : getGlobalNews(source);
     loader.then((items) => { if (!cancelled) setNews(items); }).finally(() => { if (!cancelled) setNewsLoading(false); });
     return () => { cancelled = true; };
-  }, [newsTab]);
+  }, [newsTab, isNg]);
 
   function goToInsight(id) {
     const targetIndex = INSIGHT_TABS.findIndex((t) => t.id === id);
@@ -95,22 +104,28 @@ export default function DashboardPage() {
           <div className="iv-home-news-head">
             <div className="iv-news-tabs iv-home-news-tabs">
               {NEWS_TABS.map((t) => (
-                <button key={t.id} className={"iv-news-tab" + (newsTab === t.id ? " active" : "")} onClick={() => setNewsTab(t.id)}>
+                <button key={t.id} className={"iv-news-tab" + (newsTab === t.id ? " active" : "")} disabled={isNg} onClick={() => setNewsTab(t.id)}>
                   <span className="iv-tab-full">{t.label}</span>
                   <span className="iv-tab-short">{t.short}</span>
                 </button>
               ))}
             </div>
+            <div className="iv-home-news-filters">
+              <Select compact label="Region" shortLabel="Reg" value={newsRegion} onChange={(v) => { setNewsRegion(v); setNewsCountry("Nigeria"); }} options={NEWS_REGIONS} />
+              {newsRegion === "Africa" && (
+                <Select compact label="Country" shortLabel="Ctry" value={newsCountry} onChange={setNewsCountry} options={AFRICA_COUNTRIES} />
+              )}
+            </div>
           </div>
 
           {!newsLoading && !hero && (
-            <p className="iv-empty-sm">No {NEWS_TABS.find((t) => t.id === newsTab).label.toLowerCase()} news right now.</p>
+            <p className="iv-empty-sm">No {isNg ? "Nigeria" : NEWS_TABS.find((t) => t.id === newsTab).label.toLowerCase()} news right now.</p>
           )}
           {newsLoading && <p className="iv-empty-sm">Loading news\u2026</p>}
 
           {hero && (
             hero.image ? (
-              <a className="iv-home-hero" href={hero.url} target="_blank" rel="noopener noreferrer">
+              <a className="iv-home-hero" href={hero.url} onClick={(e) => { e.preventDefault(); setViewerArticle(hero); }}>
                 <div className="iv-home-hero-image" style={{ backgroundImage: "url(" + hero.image + ")" }} />
                 <div className="iv-home-hero-scrim" />
                 <div className="iv-home-hero-body">
@@ -120,7 +135,7 @@ export default function DashboardPage() {
                 </div>
               </a>
             ) : (
-              <a className="iv-home-hero" href={hero.url} target="_blank" rel="noopener noreferrer" style={{ backgroundImage: "none" }}>
+              <a className="iv-home-hero" href={hero.url} onClick={(e) => { e.preventDefault(); setViewerArticle(hero); }} style={{ backgroundImage: "none" }}>
                 <div className="iv-home-hero-body" style={{ position: "static" }}>
                   <span className="iv-home-hero-label">{hero.source} <ExternalLink size={12} /></span>
                   <h2>{hero.headline}</h2>
@@ -133,7 +148,7 @@ export default function DashboardPage() {
           {newsCards.length > 0 && (
             <div className="iv-home-news-list">
               {newsCards.map((n) => (
-                <a key={n.id} className="iv-news-row" href={n.url} target="_blank" rel="noopener noreferrer">
+                <a key={n.id} className="iv-news-row" href={n.url} onClick={(e) => { e.preventDefault(); setViewerArticle(n); }}>
                   {n.image && <div className="iv-news-thumb" style={{ backgroundImage: "url(" + n.image + ")" }} />}
                   <div className="iv-news-row-body">
                     <div className="iv-news-headline">{n.headline}</div>
@@ -270,6 +285,7 @@ export default function DashboardPage() {
         onToggleWatch={toggleWatch}
         onCreateAlert={addAlert}
       />
+      <ArticleViewerModal article={viewerArticle} onClose={() => setViewerArticle(null)} />
     </>
   );
 }

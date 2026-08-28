@@ -13,6 +13,7 @@ import MarketBadge from "@/components/MarketBadge";
 import FlashValue from "@/components/FlashValue";
 import Select from "@/components/Select";
 import { useAuthGate } from "@/components/AuthGate";
+import ArticleViewerModal from "@/components/ArticleViewerModal";
 
 export default function StockPage() {
   const { ticker } = useParams();
@@ -22,6 +23,7 @@ export default function StockPage() {
   const [alertPrice, setAlertPrice] = useState("");
   const [alertCondition, setAlertCondition] = useState("above");
   const [marketNews, setMarketNews] = useState([]);
+  const [viewerArticle, setViewerArticle] = useState(null);
 
   useEffect(() => {
     getGlobalNews("general").then(setMarketNews).catch(() => setMarketNews([]));
@@ -97,7 +99,7 @@ export default function StockPage() {
               <p className="iv-sub" style={{ marginBottom: 10 }}>General market headlines \u2014 not specific to {s.ticker}.</p>
               <div className="iv-notif-list">
                 {marketNews.slice(0, 5).map((n) => (
-                  <a key={n.id} className="iv-notif-item" href={n.url} target="_blank" rel="noopener noreferrer" style={{ display: "block" }}>
+                  <a key={n.id} className="iv-notif-item" href={n.url} onClick={(e) => { e.preventDefault(); setViewerArticle(n); }} style={{ display: "block" }}>
                     <div>{n.headline} <ExternalLink size={12} className="muted" /></div>
                     <div className="iv-sub">{n.source}</div>
                   </a>
@@ -135,6 +137,7 @@ export default function StockPage() {
           </div>
         </div>
       </div>
+      <ArticleViewerModal article={viewerArticle} onClose={() => setViewerArticle(null)} />
     </>
   );
 }

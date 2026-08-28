@@ -13,6 +13,7 @@ import MarketBadge from "@/components/MarketBadge";
 import Sparkline from "@/components/Sparkline";
 import FlashValue from "@/components/FlashValue";
 import { useAuthGate } from "@/components/AuthGate";
+import ArticleViewerModal from "@/components/ArticleViewerModal";
 
 export default function SearchPage() {
   const { state, getAllLiveStocks, toggleWatch } = useStore();
@@ -21,6 +22,7 @@ export default function SearchPage() {
   const [q, setQ] = useState("");
   const [market, setMarket] = useState("ALL");
   const [news, setNews] = useState([]);
+  const [viewerArticle, setViewerArticle] = useState(null);
   const stocks = getAllLiveStocks();
   const needle = q.trim().toLowerCase();
 
@@ -78,7 +80,7 @@ export default function SearchPage() {
             <div className="iv-panel-head"><h3>News</h3><Newspaper size={16} className="muted" /></div>
             <div className="iv-news-list">
               {newsMatches.map((n) => (
-                <a key={n.id} className="iv-news-row" href={n.url} target="_blank" rel="noopener noreferrer">
+                <a key={n.id} className="iv-news-row" href={n.url} onClick={(e) => { e.preventDefault(); setViewerArticle(n); }}>
                   {n.image && <div className="iv-news-thumb" style={{ backgroundImage: "url(" + n.image + ")" }} />}
                   <div className="iv-news-row-body">
                     <div className="iv-news-headline">{n.headline}</div>
@@ -125,6 +127,7 @@ export default function SearchPage() {
           </table></div>
         </div>
       </div>
+      <ArticleViewerModal article={viewerArticle} onClose={() => setViewerArticle(null)} />
     </>
   );
 }
