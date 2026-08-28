@@ -61,6 +61,7 @@ export default function NewsPage() {
 
         {!loading && hero && (
           <a className="iv-panel iv-news-hero" href={hero.url} target="_blank" rel="noopener noreferrer">
+            {hero.image && <div className="iv-news-hero-image" style={{ backgroundImage: "url(" + hero.image + ")" }} />}
             <div className="iv-news-hero-meta">
               <span className="iv-sub">{hero.source} <ExternalLink size={12} /></span>
             </div>
@@ -76,6 +77,7 @@ export default function NewsPage() {
             <div className="iv-news-list">
               {group.items.map((n) => (
                 <a key={n.id} className="iv-news-row" href={n.url} target="_blank" rel="noopener noreferrer">
+                  {n.image && <div className="iv-news-thumb" style={{ backgroundImage: "url(" + n.image + ")" }} />}
                   <div className="iv-news-row-body">
                     <div className="iv-news-headline">{n.headline}</div>
                     <div className="iv-sub">{n.source} &middot; {hoursAgo(n.datetime)}h ago</div>

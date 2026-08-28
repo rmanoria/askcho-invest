@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Send, Lightbulb, Star, Sparkles } from "lucide-react";
 import { useStore } from "@/lib/store";
@@ -66,13 +66,23 @@ export default function IdeasPage() {
     { role: "tutor", text: "Ask me to explain any of these picks, or about a market concept \u2014 P/E ratios, diversification, dividends, ETFs, or how the NGX works." }
   ]);
   const [input, setInput] = useState("");
+  const [typing, setTyping] = useState(false);
+  const logRef = useRef(null);
+
+  useEffect(() => {
+    if (logRef.current) logRef.current.scrollTop = logRef.current.scrollHeight;
+  }, [messages, typing]);
 
   function send(text) {
     const q = text || input;
-    if (!q.trim()) return;
-    const reply = getTutorReply(q);
-    setMessages((m) => [...m, { role: "user", text: q }, { role: "tutor", text: reply }]);
+    if (!q.trim() || typing) return;
+    setMessages((m) => [...m, { role: "user", text: q }]);
     setInput("");
+    setTyping(true);
+    setTimeout(() => {
+      setMessages((m) => [...m, { role: "tutor", text: getTutorReply(q) }]);
+      setTyping(false);
+    }, 550);
   }
 
   return (
@@ -127,10 +137,13 @@ export default function IdeasPage() {
 
         <div className="iv-panel iv-learn-panel">
           <div className="iv-panel-head"><h3>Ask AI</h3></div>
-          <div className="iv-chat-log">
+          <div className="iv-chat-log" ref={logRef}>
             {messages.map((m, i) => (
               <div key={i} className={"iv-chat-msg " + m.role}>{m.text}</div>
             ))}
+            {typing && (
+              <div className="iv-chat-msg tutor iv-chat-typing"><span /><span /><span /></div>
+            )}
           </div>
           <div className="iv-topic-chips">
             {["P/E ratio", "Diversification", "ETFs", "Dividends", "Volatility", "Market cap", "NGX", "Risk"].map((t) => (

@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { ArrowUpRight, ArrowDownRight, ChevronRight, ChevronLeft as ChevronLeftIcon, Plus, ExternalLink } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { getGlobalNews, getNgNews, hoursAgo } from "@/lib/news";
-import { NEWS_CATEGORIES } from "@/lib/api";
 import { ALL_INDICES, getCalendarEvents } from "@/lib/markets";
 import { formatMoney, formatDate } from "@/lib/format";
 import Topbar from "@/components/Topbar";
@@ -23,8 +22,14 @@ const INSIGHT_TABS = [
   { id: "calendar", label: "Calendar", short: "Calendar" }
 ];
 
-// News tabs mirror the real backend's categories, plus a dedicated NG tab.
-const NEWS_TABS = [{ id: "ng", label: "Nigeria", short: "NG" }, ...NEWS_CATEGORIES.map((c) => ({ id: c.id, label: c.label, short: c.label }))];
+// Original dashboard tab labels, each now wired to a real backend source:
+// Featured -> general market news, Breaking -> NG feed, Most popular -> mergers, Cryptocurrency -> crypto.
+const NEWS_TABS = [
+  { id: "featured", label: "Featured", short: "Featured", source: "general" },
+  { id: "breaking", label: "Breaking", short: "Breaking", source: "ng" },
+  { id: "popular", label: "Most popular", short: "Popular", source: "merger" },
+  { id: "crypto", label: "Cryptocurrency", short: "Crypto", source: "crypto" }
+];
 
 export default function DashboardPage() {
   const { state, getAllLiveStocks, getFeaturedLiveStocks, getLiveIndexes, toggleWatch, addAlert } = useStore();
@@ -32,7 +37,7 @@ export default function DashboardPage() {
   const router = useRouter();
   const [insightTab, setInsightTab] = useState("movers");
   const [insightDir, setInsightDir] = useState("next");
-  const [newsTab, setNewsTab] = useState("general");
+  const [newsTab, setNewsTab] = useState("featured");
   const [news, setNews] = useState([]);
   const [newsLoading, setNewsLoading] = useState(true);
   const [watchModalStock, setWatchModalStock] = useState(null);
@@ -42,7 +47,8 @@ export default function DashboardPage() {
   useEffect(() => {
     let cancelled = false;
     setNewsLoading(true);
-    const loader = newsTab === "ng" ? getNgNews() : getGlobalNews(newsTab);
+    const source = NEWS_TABS.find((t) => t.id === newsTab).source;
+    const loader = source === "ng" ? getNgNews() : getGlobalNews(source);
     loader.then((items) => { if (!cancelled) setNews(items); }).finally(() => { if (!cancelled) setNewsLoading(false); });
     return () => { cancelled = true; };
   }, [newsTab]);
@@ -103,19 +109,32 @@ export default function DashboardPage() {
           {newsLoading && <p className="iv-empty-sm">Loading news\u2026</p>}
 
           {hero && (
-            <a className="iv-home-hero" href={hero.url} target="_blank" rel="noopener noreferrer" style={{ backgroundImage: "none" }}>
-              <div className="iv-home-hero-body" style={{ position: "static" }}>
-                <span className="iv-home-hero-label">{hero.source} <ExternalLink size={12} /></span>
-                <h2>{hero.headline}</h2>
-                <div className="iv-sub">{hoursAgo(hero.datetime)}h ago</div>
-              </div>
-            </a>
+            hero.image ? (
+              <a className="iv-home-hero" href={hero.url} target="_blank" rel="noopener noreferrer">
+                <div className="iv-home-hero-image" style={{ backgroundImage: "url(" + hero.image + ")" }} />
+                <div className="iv-home-hero-scrim" />
+                <div className="iv-home-hero-body">
+                  <span className="iv-home-hero-label">{hero.source} <ExternalLink size={12} /></span>
+                  <h2>{hero.headline}</h2>
+                  <div className="iv-sub">{hoursAgo(hero.datetime)}h ago</div>
+                </div>
+              </a>
+            ) : (
+              <a className="iv-home-hero" href={hero.url} target="_blank" rel="noopener noreferrer" style={{ backgroundImage: "none" }}>
+                <div className="iv-home-hero-body" style={{ position: "static" }}>
+                  <span className="iv-home-hero-label">{hero.source} <ExternalLink size={12} /></span>
+                  <h2>{hero.headline}</h2>
+                  <div className="iv-sub">{hoursAgo(hero.datetime)}h ago</div>
+                </div>
+              </a>
+            )
           )}
 
           {newsCards.length > 0 && (
             <div className="iv-home-news-list">
               {newsCards.map((n) => (
                 <a key={n.id} className="iv-news-row" href={n.url} target="_blank" rel="noopener noreferrer">
+                  {n.image && <div className="iv-news-thumb" style={{ backgroundImage: "url(" + n.image + ")" }} />}
                   <div className="iv-news-row-body">
                     <div className="iv-news-headline">{n.headline}</div>
                     <div className="iv-sub">{n.source} &middot; {hoursAgo(n.datetime)}h ago</div>

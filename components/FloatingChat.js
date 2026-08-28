@@ -1,6 +1,6 @@
 "use client";
 import { useState, useRef, useEffect, useCallback } from "react";
-import { usePathname, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { X, Send, RotateCcw, Lightbulb } from "lucide-react";
 import { getTutorReply } from "@/lib/tutor";
 import { useStore } from "@/lib/store";
@@ -13,11 +13,9 @@ const BTN_SIZE = 50;
 const EDGE_MARGIN = 8;
 
 export default function FloatingChat() {
-  const pathname = usePathname();
   const router = useRouter();
   const { state } = useStore();
-  const { requireAuth } = useAuthGate();
-  const [open, setOpen] = useState(false);
+  const { requireAuth } = useAuthGate();  const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState([WELCOME]);
   const [input, setInput] = useState("");
   const [typing, setTyping] = useState(false);
@@ -85,7 +83,7 @@ export default function FloatingChat() {
     document.removeEventListener("touchend", onDragEnd);
   }, [onDragMove, onDragEnd]);
 
-  if (pathname === "/ideas") return null;
+  // shows on every page \u2014 always accessible
 
   function send(text) {
     const q = text || input;
@@ -148,16 +146,18 @@ export default function FloatingChat() {
           </button>
         </div>
       )}
-      <button
-        className="iv-floating-chat-btn"
-        onClick={onLauncherClick}
-        onMouseDown={onDragStart}
-        onTouchStart={onDragStart}
-        aria-label="Open AI chat assistant, draggable"
-      >
-        {open ? <X size={20} /> : <img src="/askcho-logo.png" alt="Askcho" className="iv-floating-chat-btn-logo" draggable={false} />}
+      <div className="iv-floating-chat-btn-wrap">
+        <button
+          className="iv-floating-chat-btn"
+          onClick={onLauncherClick}
+          onMouseDown={onDragStart}
+          onTouchStart={onDragStart}
+          aria-label="Open AI chat assistant, draggable"
+        >
+          {open ? <X size={20} /> : <img src="/askcho-logo.png" alt="Askcho" className="iv-floating-chat-btn-logo" draggable={false} />}
+        </button>
         {!open && <span className="iv-floating-chat-ping" />}
-      </button>
+      </div>
     </div>
   );
 }

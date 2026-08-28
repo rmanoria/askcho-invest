@@ -79,6 +79,7 @@ export default function SearchPage() {
             <div className="iv-news-list">
               {newsMatches.map((n) => (
                 <a key={n.id} className="iv-news-row" href={n.url} target="_blank" rel="noopener noreferrer">
+                  {n.image && <div className="iv-news-thumb" style={{ backgroundImage: "url(" + n.image + ")" }} />}
                   <div className="iv-news-row-body">
                     <div className="iv-news-headline">{n.headline}</div>
                     <div className="iv-sub">{n.source} &middot; {hoursAgo(n.datetime)}h ago</div>
