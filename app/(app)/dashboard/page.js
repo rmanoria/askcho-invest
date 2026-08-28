@@ -99,6 +99,13 @@ export default function DashboardPage() {
       <TickerTape />
       <div className="iv-view">
 
+        <div className="iv-filter-bar">
+          <Select compact label="Region" value={newsRegion} onChange={(v) => { setNewsRegion(v); setNewsCountry("Nigeria"); }} options={NEWS_REGIONS} />
+          {newsRegion === "Africa" && (
+            <Select compact label="Country" value={newsCountry} onChange={setNewsCountry} options={AFRICA_COUNTRIES} />
+          )}
+        </div>
+
         {/* Featured hero + news list */}
         <div className="iv-panel iv-home-news-panel">
           <div className="iv-home-news-head">
@@ -109,12 +116,6 @@ export default function DashboardPage() {
                   <span className="iv-tab-short">{t.short}</span>
                 </button>
               ))}
-            </div>
-            <div className="iv-home-news-filters">
-              <Select compact label="Region" shortLabel="Reg" value={newsRegion} onChange={(v) => { setNewsRegion(v); setNewsCountry("Nigeria"); }} options={NEWS_REGIONS} />
-              {newsRegion === "Africa" && (
-                <Select compact label="Country" shortLabel="Ctry" value={newsCountry} onChange={setNewsCountry} options={AFRICA_COUNTRIES} />
-              )}
             </div>
           </div>
 

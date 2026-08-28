@@ -3,7 +3,7 @@ import { useState, useRef, useEffect, useLayoutEffect } from "react";
 import { createPortal } from "react-dom";
 import { ChevronDown } from "lucide-react";
 
-export default function Select({ value, onChange, options, placeholder, compact, label }) {
+export default function Select({ value, onChange, options, placeholder, compact, label, disabled }) {
   const [open, setOpen] = useState(false);
   const [pos, setPos] = useState(null);
   const triggerRef = useRef(null);
@@ -47,8 +47,8 @@ export default function Select({ value, onChange, options, placeholder, compact,
   const current = norm.find((o) => o.value === value);
 
   return (
-    <div className={"iv-select" + (compact ? " compact" : "")} ref={triggerRef}>
-      <button type="button" className="iv-select-trigger" onClick={() => setOpen((o) => !o)} aria-haspopup="listbox" aria-expanded={open}>
+    <div className={"iv-select" + (compact ? " compact" : "") + (disabled ? " disabled" : "")} ref={triggerRef}>
+      <button type="button" className="iv-select-trigger" disabled={disabled} onClick={() => setOpen((o) => !o)} aria-haspopup="listbox" aria-expanded={open}>
         <span className="iv-select-value">
           {label && <span className="iv-select-label">{label}: </span>}
           {current ? current.label : placeholder || "Select"}

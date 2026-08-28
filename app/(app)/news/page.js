@@ -7,41 +7,46 @@ import TickerTape from "@/components/TickerTape";
 import Select from "@/components/Select";
 import ArticleViewerModal from "@/components/ArticleViewerModal";
 
-// Original category tab labels, each now wired to a real backend source
-// (forex isn't surfaced as a quick tab here, same as on the Dashboard \u2014
-// it's still reachable, just not one of these four).
+// Category tabs, each wired to a real backend source (forex isn't surfaced as
+// a quick tab, same as on the Dashboard \u2014 it's still reachable, just not one of these).
 const TABS = [
   { id: "featured", label: "Featured", source: "general" },
   { id: "breaking", label: "Breaking", source: "merger" },
-  { id: "ngx", label: "NGX", source: "ng" },
+  { id: "popular", label: "Most popular", source: "forex" },
   { id: "global", label: "Global", source: "crypto" }
 ];
 
+// Region/Country is the real NG-vs-Global split; Category tabs then pick which
+// real category to show within the Global feed, same pattern as the Dashboard.
+const REGIONS = ["Africa", "America", "Europe", "Asia", "Global"];
+const AFRICA_COUNTRIES = ["Nigeria", "All"];
+
 export default function NewsPage() {
   const [tab, setTab] = useState("featured");
-  const [sourceFilter, setSourceFilter] = useState("All");
+  const [region, setRegion] = useState("Africa");
+  const [country, setCountry] = useState("Nigeria");
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [viewerArticle, setViewerArticle] = useState(null);
+  // Nigeria is the only African news source available, so Region: Africa always
+  // means the NG feed regardless of the Country sub-choice.
+  const isNg = region === "Africa";
 
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
     setError(false);
     const source = TABS.find((t) => t.id === tab).source;
-    const loader = source === "ng" ? getNgNews() : getGlobalNews(source);
+    const loader = isNg ? getNgNews() : getGlobalNews(source);
     loader
       .then((data) => { if (!cancelled) setItems(data); })
       .catch(() => { if (!cancelled) setError(true); })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
-  }, [tab]);
+  }, [tab, isNg]);
 
-  const sources = ["All", ...Array.from(new Set(items.map((n) => n.source)))];
-  const filtered = (sourceFilter === "All" ? items : items.filter((n) => n.source === sourceFilter))
-    .slice()
-    .sort((a, b) => b.datetime - a.datetime);
+  const filtered = items.slice().sort((a, b) => b.datetime - a.datetime);
 
   const [hero, ...rest] = filtered;
   const groups = [];
@@ -59,14 +64,17 @@ export default function NewsPage() {
       <div className="iv-view iv-news-view">
 
         <div className="iv-filter-bar">
+          <Select compact label="Region" value={region} onChange={(v) => { setRegion(v); setCountry("Nigeria"); }} options={REGIONS} />
+          {region === "Africa" && (
+            <Select compact label="Country" value={country} onChange={setCountry} options={AFRICA_COUNTRIES} />
+          )}
           <Select compact label="Category" value={tab} onChange={setTab} options={TABS.map((t) => ({ value: t.id, label: t.label }))} />
-          <Select compact label="Source" value={sourceFilter} onChange={setSourceFilter} options={sources} />
         </div>
 
         {loading && <p className="iv-empty-sm">Loading news\u2026</p>}
         {!loading && error && <p className="iv-empty-sm">Couldn't load news right now. Try another category.</p>}
         {!loading && !error && (
-          <p className="iv-sub" style={{ margin: "0 0 20px" }}>{filtered.length} article{filtered.length === 1 ? "" : "s"} in {TABS.find((t) => t.id === tab).label}.</p>
+          <p className="iv-sub" style={{ margin: "0 0 20px" }}>{filtered.length} article{filtered.length === 1 ? "" : "s"} in {isNg ? (country !== "All" ? country : "Africa") : TABS.find((t) => t.id === tab).label}.</p>
         )}
 
         {!loading && hero && (
