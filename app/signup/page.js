@@ -3,6 +3,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useStore } from "@/lib/store";
+import { createAccount, loginWithPassword } from "@/lib/api";
 import Logo from "@/components/Logo";
 
 export default function SignupPage() {
@@ -11,11 +12,41 @@ export default function SignupPage() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
-  function submit(e) {
+  async function submit(e) {
     e.preventDefault();
-    login({ name: name || (email.split("@")[0] || "Investor"), email: email || "demo@askcho.ai" });
-    router.replace("/dashboard");
+    setError("");
+    setSubmitting(true);
+
+    try {
+      const trimmedName = name.trim();
+      const [firstName, ...rest] = trimmedName ? trimmedName.split(/\s+/) : ["Investor"];
+      const lastName = rest.join(" ") || "User";
+
+      await createAccount({
+        first_name: firstName,
+        last_name: lastName,
+        email: email.trim().toLowerCase(),
+        password
+      });
+
+      const payload = await loginWithPassword(email.trim().toLowerCase(), password);
+      const userData = payload?.user || payload?.data?.user || null;
+      const session = payload?.session || payload?.data?.session || null;
+
+      login({
+        name: trimmedName || (userData?.user_metadata?.full_name || "Investor"),
+        email: userData?.email || email.trim().toLowerCase(),
+        id: userData?.id || null
+      }, session);
+      router.replace("/dashboard");
+    } catch (err) {
+      setError(err.message || "Unable to create account.");
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   return (
@@ -41,7 +72,8 @@ export default function SignupPage() {
             <span>Password</span>
             <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="********" required />
           </label>
-          <button type="submit" className="iv-btn-primary full">Create account</button>
+          {error && <p className="iv-empty-sm" style={{ margin: "0 0 12px" }}>{error}</p>}
+          <button type="submit" className="iv-btn-primary full" disabled={submitting}>{submitting ? "Creating account..." : "Create account"}</button>
         </form>
         <p className="iv-auth-switch">
           Already have an account? <Link href="/login" style={{ textDecoration: "underline", color: "var(--text)" }}>Sign in</Link>

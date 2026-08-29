@@ -7,13 +7,11 @@ import { MARKETS } from "@/lib/stocks";
 import { ALL_INDICES } from "@/lib/markets";
 import { getGlobalNews, hoursAgo } from "@/lib/news";
 import { formatMoney } from "@/lib/format";
-import Topbar from "@/components/Topbar";
-import TickerTape from "@/components/TickerTape";
+import PageFrame from "@/components/PageFrame";
 import MarketBadge from "@/components/MarketBadge";
 import Sparkline from "@/components/Sparkline";
 import FlashValue from "@/components/FlashValue";
 import { useAuthGate } from "@/components/AuthGate";
-import ArticleViewerModal from "@/components/ArticleViewerModal";
 
 export default function SearchPage() {
   const { state, getAllLiveStocks, toggleWatch } = useStore();
@@ -22,7 +20,6 @@ export default function SearchPage() {
   const [q, setQ] = useState("");
   const [market, setMarket] = useState("ALL");
   const [news, setNews] = useState([]);
-  const [viewerArticle, setViewerArticle] = useState(null);
   const stocks = getAllLiveStocks();
   const needle = q.trim().toLowerCase();
 
@@ -44,9 +41,7 @@ export default function SearchPage() {
 
   return (
     <>
-      <Topbar />
-      <TickerTape />
-      <div className="iv-view">
+      <PageFrame>
         <div className="iv-search-bar">
           <SearchIcon size={16} className="muted" />
           <input placeholder="Search markets, indices, tickers and more..." value={q} onChange={(e) => setQ(e.target.value)} />
@@ -80,7 +75,7 @@ export default function SearchPage() {
             <div className="iv-panel-head"><h3>News</h3><Newspaper size={16} className="muted" /></div>
             <div className="iv-news-list">
               {newsMatches.map((n) => (
-                <a key={n.id} className="iv-news-row" href={n.url} onClick={(e) => { e.preventDefault(); setViewerArticle(n); }}>
+                <a key={n.id} className="iv-news-row" href={n.url}>
                   {n.image && <div className="iv-news-thumb" style={{ backgroundImage: "url(" + n.image + ")" }} />}
                   <div className="iv-news-row-body">
                     <div className="iv-news-headline">{n.headline}</div>
@@ -126,8 +121,7 @@ export default function SearchPage() {
             </tbody>
           </table></div>
         </div>
-      </div>
-      <ArticleViewerModal article={viewerArticle} onClose={() => setViewerArticle(null)} />
+      </PageFrame>
     </>
   );
 }

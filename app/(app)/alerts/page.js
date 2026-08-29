@@ -4,8 +4,7 @@ import { useRouter } from "next/navigation";
 import { BellRing } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { formatDateTime } from "@/lib/format";
-import Topbar from "@/components/Topbar";
-import TickerTape from "@/components/TickerTape";
+import PageFrame from "@/components/PageFrame";
 import Select from "@/components/Select";
 
 export default function AlertsPage() {
@@ -33,9 +32,7 @@ export default function AlertsPage() {
 
   return (
     <>
-      <Topbar title="Alerts" />
-      <TickerTape />
-      <div className="iv-view">
+      <PageFrame title="Alerts">
         <div className="iv-panel">
           <div className="iv-panel-head"><h3>Set a price alert</h3><BellRing size={16} className="muted" /></div>
           {stocks.length === 0 ? (
@@ -107,7 +104,7 @@ export default function AlertsPage() {
             </table></div>
           )}
         </div>
-      </div>
+      </PageFrame>
     </>
   );
 }

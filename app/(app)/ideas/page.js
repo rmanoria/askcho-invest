@@ -5,8 +5,7 @@ import { Send, Lightbulb, Star, Sparkles } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { formatMoney } from "@/lib/format";
 import { getTutorReply } from "@/lib/tutor";
-import Topbar from "@/components/Topbar";
-import TickerTape from "@/components/TickerTape";
+import PageFrame from "@/components/PageFrame";
 
 function pickReason(s) {
   if (s.changePct >= 2) return "Strong momentum today, up " + s.changePct.toFixed(2) + "% \u2014 worth watching for continuation.";
@@ -87,9 +86,7 @@ export default function IdeasPage() {
 
   return (
     <>
-      <Topbar title="Ideas" />
-      <TickerTape />
-      <div className="iv-view">
+      <PageFrame title="Ideas">
 
         <div className="iv-panel">
           <div className="iv-panel-head"><h3>AI market summaries</h3><Lightbulb size={16} className="muted" /></div>
@@ -156,7 +153,7 @@ export default function IdeasPage() {
           </div>
         </div>
 
-      </div>
+      </PageFrame>
     </>
   );
 }

@@ -2,8 +2,7 @@
 import Link from "next/link";
 import { BellRing, Users, Lightbulb, Settings, LogOut, ChevronRight } from "lucide-react";
 import { useStore } from "@/lib/store";
-import Topbar from "@/components/Topbar";
-import TickerTape from "@/components/TickerTape";
+import PageFrame from "@/components/PageFrame";
 
 const GROUPS = [
   {
@@ -32,9 +31,7 @@ export default function MorePage() {
 
   return (
     <>
-      <Topbar title="More" />
-      <TickerTape />
-      <div className="iv-view iv-more-view">
+      <PageFrame title="More" className="iv-more-view">
 
         {GROUPS.map((group) => (
           <div key={group.title} className="iv-more-group">
@@ -58,7 +55,7 @@ export default function MorePage() {
           <span className="iv-more-row-icon"><LogOut size={17} /></span>
           <span className="iv-more-row-label">Sign out</span>
         </button>
-      </div>
+      </PageFrame>
     </>
   );
 }

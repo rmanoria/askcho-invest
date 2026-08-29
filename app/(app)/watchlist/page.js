@@ -4,8 +4,7 @@ import { useRouter } from "next/navigation";
 import { Star, X, ChevronRight } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { formatMoney } from "@/lib/format";
-import Topbar from "@/components/Topbar";
-import TickerTape from "@/components/TickerTape";
+import PageFrame from "@/components/PageFrame";
 import PriceChart from "@/components/PriceChart";
 import Sparkline from "@/components/Sparkline";
 import FlashValue from "@/components/FlashValue";
@@ -18,9 +17,8 @@ export default function WatchlistPage() {
 
   return (
     <>
-      <Topbar title="Watchlist" />
-      <TickerTape />
-      <div className="iv-view">
+
+      <PageFrame title="Watchlist">
         {stocks.length === 0 ? (
           <div className="iv-panel iv-empty-state">
             <Star size={28} className="muted" />
@@ -73,7 +71,7 @@ export default function WatchlistPage() {
             </div>
           </>
         )}
-      </div>
+      </PageFrame>
     </>
   );
 }

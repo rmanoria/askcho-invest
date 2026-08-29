@@ -5,15 +5,13 @@ import { ArrowLeft, ArrowUpRight, ArrowDownRight, Star, Newspaper, BellRing, Ext
 import { useStore } from "@/lib/store";
 import { getGlobalNews } from "@/lib/news";
 import { formatMoney } from "@/lib/format";
-import Topbar from "@/components/Topbar";
-import TickerTape from "@/components/TickerTape";
+import PageFrame from "@/components/PageFrame";
 import PriceChart from "@/components/PriceChart";
 import Stat from "@/components/Stat";
 import MarketBadge from "@/components/MarketBadge";
 import FlashValue from "@/components/FlashValue";
 import Select from "@/components/Select";
 import { useAuthGate } from "@/components/AuthGate";
-import ArticleViewerModal from "@/components/ArticleViewerModal";
 
 export default function StockPage() {
   const { ticker } = useParams();
@@ -23,7 +21,6 @@ export default function StockPage() {
   const [alertPrice, setAlertPrice] = useState("");
   const [alertCondition, setAlertCondition] = useState("above");
   const [marketNews, setMarketNews] = useState([]);
-  const [viewerArticle, setViewerArticle] = useState(null);
 
   useEffect(() => {
     getGlobalNews("general").then(setMarketNews).catch(() => setMarketNews([]));
@@ -34,10 +31,9 @@ export default function StockPage() {
   if (!s) {
     return (
       <>
-        <Topbar title="Stock not found" />
-        <div className="iv-view">
+        <PageFrame title="Stock not found">
           <p className="iv-empty-sm">{stocksLoading ? "Loading live prices\u2026" : "We couldn't find that ticker."}</p>
-        </div>
+        </PageFrame>
       </>
     );
   }
@@ -57,9 +53,7 @@ export default function StockPage() {
 
   return (
     <>
-      <Topbar title={s.ticker} />
-      <TickerTape />
-      <div className="iv-view">
+      <PageFrame title={s.ticker}>
         <button className="iv-btn-ghost sm" onClick={() => router.back()} style={{ marginBottom: 16 }}>
           <ArrowLeft size={14} /> Back
         </button>
@@ -99,7 +93,7 @@ export default function StockPage() {
               <p className="iv-sub" style={{ marginBottom: 10 }}>General market headlines \u2014 not specific to {s.ticker}.</p>
               <div className="iv-notif-list">
                 {marketNews.slice(0, 5).map((n) => (
-                  <a key={n.id} className="iv-notif-item" href={n.url} onClick={(e) => { e.preventDefault(); setViewerArticle(n); }} style={{ display: "block" }}>
+                  <a key={n.id} className="iv-notif-item" href={n.url} style={{ display: "block" }}>
                     <div>{n.headline} <ExternalLink size={12} className="muted" /></div>
                     <div className="iv-sub">{n.source}</div>
                   </a>
@@ -136,8 +130,7 @@ export default function StockPage() {
             </button>
           </div>
         </div>
-      </div>
-      <ArticleViewerModal article={viewerArticle} onClose={() => setViewerArticle(null)} />
+      </PageFrame>
     </>
   );
 }

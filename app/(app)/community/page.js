@@ -2,17 +2,14 @@
 import { Users } from "lucide-react";
 import { TOP_INVESTORS } from "@/lib/stocks";
 import { useStore } from "@/lib/store";
-import Topbar from "@/components/Topbar";
-import TickerTape from "@/components/TickerTape";
+import PageFrame from "@/components/PageFrame";
 
 export default function CommunityPage() {
   const { notify } = useStore();
 
   return (
     <>
-      <Topbar title="Community" />
-      <TickerTape />
-      <div className="iv-view">
+      <PageFrame title="Community">
         <div className="iv-panel">
           <div className="iv-panel-head">
             <div>
@@ -43,7 +40,7 @@ export default function CommunityPage() {
             </div>
           ))}
         </div>
-      </div>
+      </PageFrame>
     </>
   );
 }

@@ -5,7 +5,7 @@ import { useStore } from "@/lib/store";
 import Logo from "./Logo";
 import NotificationBell from "./NotificationBell";
 
-export default function Topbar() {
+export default function Topbar({ title = "" }) {
   const { state } = useStore();
 
   return (
@@ -13,6 +13,7 @@ export default function Topbar() {
       <Link href="/dashboard" className="iv-topbar-brand" aria-label="Home">
         <Logo size={38} />
       </Link>
+      {title && <h1 className="iv-page-title">{title}</h1>}
       <div className="iv-topbar-right">
         <div className="iv-pill"><span className="dot" /><span className="iv-pill-label">Markets live</span></div>
         <Link href="/search" className="iv-icon-btn" aria-label="Search news, markets, indices and more"><Search size={16} /></Link>

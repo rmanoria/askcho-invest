@@ -3,6 +3,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useStore } from "@/lib/store";
+import { loginWithPassword } from "@/lib/api";
 import Logo from "@/components/Logo";
 
 export default function LoginPage() {
@@ -10,11 +11,30 @@ export default function LoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
-  function submit(e) {
+  async function submit(e) {
     e.preventDefault();
-    login({ name: email.split("@")[0] || "Investor", email: email || "demo@askcho.ai" });
-    router.replace("/dashboard");
+    setError("");
+    setSubmitting(true);
+
+    try {
+      const payload = await loginWithPassword(email.trim().toLowerCase(), password);
+      const userData = payload?.user || payload?.data?.user || null;
+      const session = payload?.session || payload?.data?.session || null;
+      const resolvedName = userData?.user_metadata?.full_name || userData?.name || (email.split("@")[0] || "Investor");
+      login({
+        name: resolvedName,
+        email: userData?.email || email.trim().toLowerCase(),
+        id: userData?.id || null
+      }, session);
+      router.replace("/dashboard");
+    } catch (err) {
+      setError(err.message || "Unable to sign in.");
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   function continueDemo() {
@@ -44,7 +64,8 @@ export default function LoginPage() {
           <div className="iv-forgot-row">
             <Link href="/forgot-password" className="iv-link-btn">Forgot password?</Link>
           </div>
-          <button type="submit" className="iv-btn-primary full">Sign in</button>
+          {error && <p className="iv-empty-sm" style={{ margin: "0 0 12px" }}>{error}</p>}
+          <button type="submit" className="iv-btn-primary full" disabled={submitting}>{submitting ? "Signing in..." : "Sign in"}</button>
         </form>
         <button className="iv-btn-ghost full" onClick={continueDemo}>Continue as demo user</button>
         <p className="iv-auth-switch">

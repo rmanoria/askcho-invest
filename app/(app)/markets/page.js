@@ -1,58 +1,179 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowUpRight, ArrowDownRight } from "lucide-react";
 import { useStore } from "@/lib/store";
-import { ALL_INDICES, COMMODITIES, CRYPTO, CURRENCIES, BONDS, FUTURES } from "@/lib/markets";
+import { BONDS, FUTURES } from "@/lib/markets";
 import { formatMoney } from "@/lib/format";
-import Topbar from "@/components/Topbar";
-import TickerTape from "@/components/TickerTape";
+import PageFrame from "@/components/PageFrame";
 import Sparkline from "@/components/Sparkline";
 import Select from "@/components/Select";
+import SkeletonTableRow from "@/components/SkeletonTableRow";
+import {
+  fetchNgIndices,
+  fetchGlobalIndices,
+  fetchGlobalCommodities,
+  fetchGlobalCrypto,
+  fetchGlobalForex,
+  fetchGlobalEtfs,
+  fetchGlobalMutualFunds
+} from "@/lib/api";
+// NOTE: adjust the "@/lib/api" import above if your service layer file
+// lives at a different path (e.g. "@/lib/cam-api").
 
-const REGIONS = ["Africa", "America", "Europe", "Asia", "Global"];
-// countries available once "Africa" is picked as the region \u2014 add more as data is added for them
+const REGIONS = ["Africa", "Global"];
+// countries available once "Africa" is picked as the region — add more as data is added for them
 const AFRICA_COUNTRIES = ["Nigeria", "All"];
 const SORTS = [
   { value: "default", label: "Default" },
   { value: "change_desc", label: "High to low" },
   { value: "change_asc", label: "Low to high" },
-  { value: "alpha", label: "A\u2013Z" }
+  { value: "alpha", label: "A–Z" }
 ];
 
-// which live market feed belongs to which region \u2014 the API only distinguishes
+// which live market feed belongs to which region — the API only distinguishes
 // NG (Africa) vs Global (everything else priced in USD), no NASDAQ/NYSE/ETF split.
 const REGION_MARKETS = { Africa: ["NGX"], America: ["Global"] };
 
-// instrument types available once a region is picked \u2014 geography-specific types first, then
-// the globally-traded types (commodities, crypto, currencies, futures) which apply everywhere.
-// add more entries to either list as data is added for them.
+// instrument types available once a region is picked — Indices is always
+// available (Africa uses /market/ng/indices, Global uses /market/global/indices
+// via ETF proxies). Region-specific types come next, then the globally-traded
+// types (commodities, crypto, currencies, ETFs, mutual funds, futures), which
+// are the same regardless of region.
 function getInstrumentTypes(region) {
-  const types = [];
-  if (region !== "Global") {
-    types.push("Indices");
-    if (REGION_MARKETS[region]) types.push("Stocks");
-    if (["Africa", "America", "Europe"].includes(region)) types.push("Bonds");
-  }
-  types.push("Currencies", "Commodities", "Cryptocurrency", "Futures");
+  const types = ["Indices"];
+  if (REGION_MARKETS[region]) types.push("Stocks");
+  if (["Africa", "America", "Europe"].includes(region)) types.push("Bonds");
+  types.push("Currencies", "Commodities", "Cryptocurrency", "ETFs", "Mutual Funds", "Futures");
   return types;
 }
 
-function getInstruments(region, type, stocks) {
-  if (type === "Indices") return ALL_INDICES.filter((ix) => ix.region === region);
+function getInstruments(region, type, stocks, live) {
+  if (type === "Indices") return live.indices;
   if (type === "Stocks") return stocks.filter((s) => (REGION_MARKETS[region] || []).includes(s.market));
   if (type === "Bonds") return BONDS.filter((b) => b.type === region);
-  if (type === "Currencies") return region === "Africa" ? CURRENCIES.filter((c) => c.currency === "NGN") : CURRENCIES;
-  if (type === "Commodities") return COMMODITIES;
-  if (type === "Cryptocurrency") return CRYPTO;
+  if (type === "Currencies") {
+    // forex pairs are fetched globally (not region-scoped), but Africa
+    // narrows the view down to NGN pairs the same way the old static
+    // CURRENCIES list did.
+    return region === "Africa" ? live.currencies.filter((c) => c.ticker?.includes("NGN")) : live.currencies;
+  }
+  if (type === "Commodities") return live.commodities;
+  if (type === "Cryptocurrency") return live.crypto;
+  if (type === "ETFs") return live.etfs;
+  if (type === "Mutual Funds") return live.mutualFunds;
   if (type === "Futures") return FUTURES;
   return [];
 }
 
 function itemPrice(item, isIndex) {
-  if (isIndex) return item.value.toLocaleString(undefined, { maximumFractionDigits: 2 });
-  if (item.currency === "%") return item.price.toFixed(2) + "%";
+  if (isIndex) return Number(item.value ?? 0).toLocaleString(undefined, { maximumFractionDigits: 2 });
+  if (item.currency === "%") return Number(item.price ?? 0).toFixed(2) + "%";
+  // forex rates aren't "money" in a currency sense - show the raw rate instead
+  if (item.currency === "rate") return Number(item.price ?? 0).toFixed(4);
   return formatMoney(item.price, item.currency === "NGN" ? "NGN" : "USD");
+}
+
+// --- Mapping helpers: backend response shape -> the row shape this page renders
+
+function mapGlobalIndices(raw) {
+  if (!Array.isArray(raw)) return [];
+  return raw.map((item) => ({
+    name: item.index,
+    ticker: item.proxy_symbol,
+    value: item.current_price,
+    changePct: item.percent_change ?? 0,
+    region: "Global"
+  }));
+}
+
+// NG indices come from NGN_MARKET_API_URL, whose exact field names weren't
+// specified when this was wired up - these fallbacks cover the likely
+// shapes, but confirm against a real response and trim/adjust as needed.
+function mapNgIndices(raw) {
+  const list = Array.isArray(raw) ? raw : raw?.data;
+  if (!Array.isArray(list)) return [];
+  return list.map((item) => ({
+    name: item.name || item.index_name || item.symbol || item.Symbol || "—",
+    ticker: item.symbol || item.Symbol,
+    value: Number(item.value ?? item.current_value ?? item.Value ?? 0),
+    changePct: Number(item.percent_change ?? item.changePct ?? item.PercChange ?? 0),
+    region: "Africa"
+  }));
+}
+
+function mapCommodities(raw) {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .filter((item) => !item.error)
+    .map((item) => ({
+      ticker: item.ticker,
+      name: item.commodity,
+      price: item.latest_value,
+      changePct: item.percent_change ?? 0,
+      currency: "USD",
+      market: item.unit || "Commodity"
+    }));
+}
+
+function mapCrypto(raw) {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .filter((item) => !item.error)
+    .map((item) => ({
+      ticker: item.id,
+      name: item.id.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()),
+      price: item.price,
+      changePct: item.percent_change_24h ?? 0,
+      currency: item.currency || "USD",
+      market: "Crypto"
+    }));
+}
+
+function mapForex(raw) {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .filter((item) => !item.error)
+    .map((item) => ({
+      ticker: item.pair,
+      name: item.pair,
+      price: item.exchange_rate,
+      // Alpha Vantage's CURRENCY_EXCHANGE_RATE is a point-in-time rate with
+      // no daily-change field, so this stays 0 until/unless that changes.
+      changePct: 0,
+      currency: "rate",
+      market: "Forex"
+    }));
+}
+
+function mapEtfs(raw) {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .filter((item) => !item.error)
+    .map((item) => ({
+      // Finnhub's quote endpoint only returns price data, not the fund's
+      // full name, so ticker doubles as the display name here.
+      ticker: item.symbol,
+      name: item.symbol,
+      price: item.current_price,
+      changePct: item.percent_change ?? 0,
+      currency: "USD",
+      market: "ETF"
+    }));
+}
+
+function mapMutualFunds(raw) {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .filter((item) => !item.error)
+    .map((item) => ({
+      ticker: item.symbol,
+      name: item.symbol,
+      price: item.nav,
+      changePct: item.percent_change ?? 0,
+      currency: "USD",
+      market: "Mutual Fund"
+    }));
 }
 
 export default function MarketsPage() {
@@ -63,12 +184,78 @@ export default function MarketsPage() {
   const [type, setType] = useState("Indices");
   const [sort, setSort] = useState("default");
 
+  const [indices, setIndices] = useState([]);
+  const [indicesLoading, setIndicesLoading] = useState(true);
+
+  const [commodities, setCommodities] = useState([]);
+  const [crypto, setCrypto] = useState([]);
+  const [currencies, setCurrencies] = useState([]);
+  const [etfs, setEtfs] = useState([]);
+  const [mutualFunds, setMutualFunds] = useState([]);
+  const [globalLoading, setGlobalLoading] = useState(true);
+
+  // Indices depend on region (NG vs Global uses a different endpoint), so
+  // they get their own effect keyed on `region`.
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadIndices() {
+      setIndicesLoading(true);
+      try {
+        const raw = region === "Africa" ? await fetchNgIndices() : await fetchGlobalIndices();
+        if (cancelled) return;
+        setIndices(region === "Africa" ? mapNgIndices(raw) : mapGlobalIndices(raw));
+      } catch (e) {
+        if (!cancelled) setIndices([]);
+      } finally {
+        if (!cancelled) setIndicesLoading(false);
+      }
+    }
+
+    loadIndices();
+    return () => {
+      cancelled = true;
+    };
+  }, [region]);
+
+  // Everything else here is fetched globally regardless of region, so it
+  // only needs to load once on mount.
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadGlobalData() {
+      setGlobalLoading(true);
+      const [commoditiesRes, cryptoRes, forexRes, etfsRes, mutualFundsRes] = await Promise.allSettled([
+        fetchGlobalCommodities(),
+        fetchGlobalCrypto(),
+        fetchGlobalForex(),
+        fetchGlobalEtfs(),
+        fetchGlobalMutualFunds()
+      ]);
+      if (cancelled) return;
+
+      setCommodities(commoditiesRes.status === "fulfilled" ? mapCommodities(commoditiesRes.value) : []);
+      setCrypto(cryptoRes.status === "fulfilled" ? mapCrypto(cryptoRes.value) : []);
+      setCurrencies(forexRes.status === "fulfilled" ? mapForex(forexRes.value) : []);
+      setEtfs(etfsRes.status === "fulfilled" ? mapEtfs(etfsRes.value) : []);
+      setMutualFunds(mutualFundsRes.status === "fulfilled" ? mapMutualFunds(mutualFundsRes.value) : []);
+      setGlobalLoading(false);
+    }
+
+    loadGlobalData();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const live = { indices, currencies, commodities, crypto, etfs, mutualFunds };
+
   const stocks = getAllLiveStocks();
   const types = getInstrumentTypes(region);
   const isIndex = type === "Indices";
   const clickable = type === "Stocks";
 
-  let items = getInstruments(region, type, stocks);
+  let items = getInstruments(region, type, stocks, live);
   const nameOf = (item) => (isIndex ? item.name : item.ticker);
   if (sort === "change_desc") items = [...items].sort((a, b) => b.changePct - a.changePct);
   else if (sort === "change_asc") items = [...items].sort((a, b) => a.changePct - b.changePct);
@@ -84,13 +271,23 @@ export default function MarketsPage() {
   const best = items.length ? [...items].sort((a, b) => b.changePct - a.changePct)[0] : null;
   const worst = items.length ? [...items].sort((a, b) => a.changePct - b.changePct)[0] : null;
   const subOf = (item) => item.market || item.type || "";
-  const showLoading = type === "Stocks" && stocksLoading && items.length === 0;
+
+  const typeLoading = {
+    Indices: indicesLoading,
+    Stocks: stocksLoading,
+    Bonds: false,
+    Currencies: globalLoading,
+    Commodities: globalLoading,
+    Cryptocurrency: globalLoading,
+    ETFs: globalLoading,
+    "Mutual Funds": globalLoading,
+    Futures: false
+  };
+  const showLoading = (typeLoading[type] ?? false) && items.length === 0;
 
   return (
     <>
-      <Topbar />
-      <TickerTape />
-      <div className="iv-view">
+      <PageFrame>
 
         <div className="iv-filter-bar">
           <Select compact label="Region" value={region} onChange={handleRegionChange} options={REGIONS} />
@@ -143,7 +340,7 @@ export default function MarketsPage() {
                 </tr>
               </thead>
               <tbody>
-                {items.map((item) => (
+                {!showLoading && items.map((item) => (
                   <tr
                     key={isIndex ? item.name : item.ticker}
                     style={{ cursor: clickable ? "pointer" : "default" }}
@@ -163,14 +360,22 @@ export default function MarketsPage() {
                     {!isIndex && <td className="iv-col-hide-mobile">{item.history && <Sparkline data={item.history.slice(-20)} positive={item.changePct >= 0} />}</td>}
                   </tr>
                 ))}
-                {items.length === 0 && (
-                  <tr><td colSpan={isIndex ? 4 : 5} className="iv-empty-sm">{showLoading ? "Loading live prices\u2026" : "No " + type.toLowerCase() + " tracked for " + region + " yet."}</td></tr>
+                {showLoading && (
+                  <>
+                    <SkeletonTableRow colCount={isIndex ? 4 : 5} />
+                    <SkeletonTableRow colCount={isIndex ? 4 : 5} />
+                    <SkeletonTableRow colCount={isIndex ? 4 : 5} />
+                    <SkeletonTableRow colCount={isIndex ? 4 : 5} />
+                  </>
+                )}
+                {!showLoading && items.length === 0 && (
+                  <tr><td colSpan={isIndex ? 4 : 5} className="iv-empty-sm">No {type.toLowerCase()} tracked for {region} yet.</td></tr>
                 )}
               </tbody>
             </table>
           </div>
         </div>
-      </div>
+      </PageFrame>
     </>
   );
 }
