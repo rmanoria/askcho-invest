@@ -2,12 +2,11 @@
 import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowUpRight, ArrowDownRight, ChevronRight, ChevronLeft as ChevronLeftIcon, Plus, ExternalLink, Loader2 } from "lucide-react";
+import { ArrowUpRight, ArrowDownRight, ChevronRight, ChevronLeft as ChevronLeftIcon, Plus, ExternalLink } from "lucide-react";
 import { useStore } from "@/lib/store";
-import { fetchGlobalMovers, fetchNgMovers, fetchNgIndices } from "@/lib/api";
+import { fetchGlobalMovers, fetchNgMovers, fetchNgIndices, fetchGlobalIndices } from "@/lib/api";
 import { getGlobalNews, getNgNews, hoursAgo } from "@/lib/news";
-import { getCalendarEvents } from "@/lib/markets";
-import { formatMoney, formatDate } from "@/lib/format";
+import { formatMoney } from "@/lib/format";
 import PageFrame from "@/components/PageFrame";
 import MarketBadge from "@/components/MarketBadge";
 import FlashValue from "@/components/FlashValue";
@@ -43,33 +42,54 @@ const NIGERIA_NEWS_TABS = [
   { id: "product-updates", label: "Product Updates", short: "Updates", source: "product-updates" }
 ];
 
-function normalizeMoversArray(items = []) {
+function normalizeMoversArray(items = [], market) {
   return items.map((item, idx) => {
-    const changePercentage = Number(String(item.change_percentage ?? item.changePct ?? item.change ?? "0").replace(/[%,%]/g, ""));
-    const price = Number(item.price ?? item.last_price ?? 0);
+    const changePercentage = Number(String(item.change_percentage ?? item.changePct ?? item.change ?? item.percent_change ?? "0").replace(/[%,%]/g, ""));
+    const price = Number(item.current_price ?? item.last_price ?? item.price ?? 0);
 
     return {
       id: item.ticker || item.symbol || `mover-${idx}`,
       ticker: item.ticker || item.symbol || `G-${idx}`,
       name: item.company || item.name || item.ticker || item.symbol || "Global stock",
-      market: "Global",
+      market,
       price,
       changePct: Number.isFinite(changePercentage) ? changePercentage : 0,
-      currency: "USD"
+      currency: item.currency
     };
   });
 }
 
-function normalizeNgIndices(items = []) {
+function normalizeIndices(payload = []) {
+  const items = Array.isArray(payload)
+    ? payload
+    : Array.isArray(payload?.data?.data)
+      ? payload.data.data
+      : Array.isArray(payload?.data)
+        ? payload.data
+        : [];
+
   return items.map((item) => {
-    const changePct = Number(item.price_change_percent ?? item.changePct ?? 0);
-    const value = Number(item.current_value ?? item.value ?? 0);
+    const changePct = Number(
+      item.price_change_percent ??
+      item.percent_change ??
+      item.changePct ??
+      item.PercChange ??
+      0
+    );
+    const value = Number(
+      item.current_value ??
+      item.current_price ??
+      item.value ??
+      item.Value ??
+      item.price ??
+      0
+    );
 
     return {
-      name: item.index_name || item.symbol || "NG Index",
+      name: item.index_name || item.index || item.name || item.Symbol || item.symbol || "Index",
       value,
       changePct: Number.isFinite(changePct) ? changePct : 0,
-      history: [] // No history data from API yet
+      history: []
     };
   });
 }
@@ -92,13 +112,12 @@ function normalizeNgMovers(payload) {
 }
 
 export default function DashboardPage() {
-  const { state, getAllLiveStocks, getFeaturedLiveStocks, getLiveIndexes, toggleWatch, addAlert } = useStore();
+  const { state, region, setRegion, getAllLiveStocks, getFeaturedLiveStocks, toggleWatch, addAlert } = useStore();
   const { requireAuth } = useAuthGate();
   const router = useRouter();
   const [insightTab, setInsightTab] = useState("gainers");
   const [insightDir, setInsightDir] = useState("next");
-  const [newsTab, setNewsTab] = useState("featured");
-  const [newsRegion, setNewsRegion] = useState("Africa");
+  const [newsTab, setNewsTab] = useState("general");
   const [newsCountry, setNewsCountry] = useState("Nigeria");
   const [news, setNews] = useState([]);
   const [newsLoading, setNewsLoading] = useState(true);
@@ -112,7 +131,7 @@ export default function DashboardPage() {
   const touchX = useRef(null);
   // Nigeria is the only African news source available, so Region: Africa always
   // means the NG feed regardless of the Country sub-choice.
-  const isNg = newsRegion === "Africa";
+  const isNg = region === "Africa";
 
   useEffect(() => {
     let cancelled = false;
@@ -127,7 +146,6 @@ export default function DashboardPage() {
       .then((items) => {
         if (!cancelled) {
           setNews(items);
-          console.log(items[0]);
         }
       })
       .catch(() => { if (!cancelled) setNewsError(true); })
@@ -154,49 +172,54 @@ export default function DashboardPage() {
     let cancelled = false;
 
     async function loadMovers() {
-      try {
-        const [globalPayload, ngIndicesPayload] = await Promise.all([fetchGlobalMovers(), fetchNgIndices()]);
-        if (cancelled) return;
-        setGlobalGainers(normalizeMoversArray(globalPayload?.top_gainers || []));
-        setGlobalLosers(normalizeMoversArray(globalPayload?.top_losers || []));
-        setNgIndices(normalizeNgIndices(Array.isArray(ngIndicesPayload) ? ngIndicesPayload : []));
-      } catch (e) {
-        if (!cancelled) {
-          setGlobalGainers([]);
-          setGlobalLosers([]);
-          setNgIndices([]);
-        }
-      } finally {
-        if (!cancelled) setMarketMoversLoading(false);
+      setMarketMoversLoading(true);
+      setGlobalGainers([]);
+      setGlobalLosers([]);
+      setNgIndices([]);
+
+      const [moversResult, indicesResult] = await Promise.allSettled([
+        isNg ? fetchNgMovers() : fetchGlobalMovers(),
+        isNg ? fetchNgIndices() : fetchGlobalIndices()
+      ]);
+
+      if (cancelled) return;
+
+      if (moversResult.status === "fulfilled") {
+        const moversPayload = moversResult.value;
+        setGlobalGainers(normalizeMoversArray(moversPayload?.top_gainers || [], isNg ? "NGX" : "Global"));
+        setGlobalLosers(normalizeMoversArray(moversPayload?.top_losers || [], isNg ? "NGX" : "Global"));
       }
+
+      if (indicesResult.status === "fulfilled") {
+        setNgIndices(normalizeIndices(indicesResult.value));
+      }
+
+      setMarketMoversLoading(false);
     }
 
     loadMovers();
     return () => { cancelled = true; };
-  }, []);
+  }, [isNg]);
 
   const stocks = getAllLiveStocks();
-  const featured = getFeaturedLiveStocks();
-  const indexes = getLiveIndexes();
-  const summaryIndexes = [...indexes, ...ngIndices.slice()];
+  const featured = getFeaturedLiveStocks()
+  const summaryIndexes = [...ngIndices.slice()];
 
   const [hero, ...restNews] = news;
   const newsCards = restNews.slice(0, 3);
 
   // Use real API data, fall back to live stocks if needed
-  const gainers = globalGainers.length ? globalGainers : [...stocks].sort((a, b) => b.changePct - a.changePct).slice(0, 6);
-  const losers = globalLosers.length ? globalLosers : [...stocks].sort((a, b) => a.changePct - b.changePct).slice(0, 6);
+  const gainers = globalGainers
+  const losers = globalLosers
   const topGainers = gainers.slice(0, 4);
-
-  const events = getCalendarEvents().slice(0, 6);
 
   return (
     <>
       <PageFrame>
 
         <div className="iv-filter-bar">
-          <Select compact label="Region" value={newsRegion} onChange={(v) => { setNewsRegion(v); setNewsCountry("Nigeria"); setNewsTab(v === "Africa" ? "general" : "featured"); }} options={NEWS_REGIONS} />
-          {newsRegion === "Africa" && (
+          <Select compact label="Region" value={region} onChange={(v) => { setRegion(v); setNewsCountry("Nigeria"); setNewsTab("general"); }} options={NEWS_REGIONS} />
+          {region === "Africa" && (
             <Select compact label="Country" value={newsCountry} onChange={setNewsCountry} options={AFRICA_COUNTRIES} />
           )}
         </div>
@@ -205,7 +228,7 @@ export default function DashboardPage() {
         <div className="iv-panel iv-home-news-panel">
           <div className="iv-home-news-head">
             <div className="iv-news-tabs iv-home-news-tabs">
-              {(newsRegion === "Africa" ? NIGERIA_NEWS_TABS : GLOBAL_NEWS_TABS).map((t) => (
+              {(region === "Africa" ? NIGERIA_NEWS_TABS : GLOBAL_NEWS_TABS).map((t) => (
                 <button key={t.id} className={"iv-news-tab" + (newsTab === t.id ? " active" : "")} onClick={() => setNewsTab(t.id)}>
                   <span className="iv-tab-full">{t.label}</span>
                   <span className="iv-tab-short">{t.short}</span>
@@ -226,7 +249,7 @@ export default function DashboardPage() {
 
           {hero && (
             hero.image ? (
-              <a className="iv-home-hero" href={hero.url}>
+              <a className="iv-home-hero" href={hero.url} target="_blank">
                 <div className="iv-home-hero-image" style={{ backgroundImage: "url(" + hero.image + ")" }} />
                 <div className="iv-home-hero-scrim" />
                 <div className="iv-home-hero-body">
@@ -236,7 +259,7 @@ export default function DashboardPage() {
                 </div>
               </a>
             ) : (
-              <a className="iv-home-hero" href={hero.url} style={{ backgroundImage: "none" }}>
+              <a className="iv-home-hero" href={hero.url} target="_blank" style={{ backgroundImage: "none" }} >
                 <div className="iv-home-hero-body" style={{ position: "static" }}>
                   <span className="iv-home-hero-label">{hero.source} <ExternalLink size={12} /></span>
                   <h2>{hero.headline}</h2>
@@ -249,7 +272,7 @@ export default function DashboardPage() {
           {newsCards.length > 0 && (
             <div className="iv-home-news-list">
               {newsCards.map((n) => (
-                <a key={n.id} className="iv-news-row" href={n.url}>
+                <a key={n.id} className="iv-news-row" href={n.url} target="_blank">
                   {n.image && <div className="iv-news-thumb" style={{ backgroundImage: "url(" + n.image + ")", backgroundSize: "cover", backgroundPosition: "center", backgroundRepeat: "no-repeat" }} />}
                   <div className="iv-news-row-body">
                     <div className="iv-news-headline">{n.headline}</div>
@@ -364,20 +387,6 @@ export default function DashboardPage() {
                     )}
                   </tbody>
                 </table></div>
-              )}
-
-              {insightTab === "calendar" && (
-                <div className="iv-notif-list">
-                  {events.map((e) => (
-                    <div key={e.id} className="iv-notif-item" style={{ cursor: e.ticker ? "pointer" : "default" }} onClick={() => e.ticker && router.push("/stock/" + e.ticker)}>
-                      <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
-                        <span>{e.title}</span>
-                        <span className="iv-sub" style={{ textTransform: "uppercase", fontSize: 10.5 }}>{e.type}</span>
-                      </div>
-                      <div className="iv-sub">{formatDate(e.date)}</div>
-                    </div>
-                  ))}
-                </div>
               )}
 
             </div>

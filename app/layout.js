@@ -25,7 +25,7 @@ const jetbrainsMono = JetBrains_Mono({
 
 export const metadata = {
   title: "Competence Asset Management",
-  description: "Competence Asset Management \u2014 invest across NGX, NYSE, NASDAQ and fixed income, built for Nigerian investors."
+  description: "Live market data, news, watchlists, and price alerts for Nigerian and global investors."
 };
 
 export default function RootLayout({ children }) {

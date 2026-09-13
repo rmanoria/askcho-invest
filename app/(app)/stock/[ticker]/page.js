@@ -3,7 +3,8 @@ import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { ArrowLeft, ArrowUpRight, ArrowDownRight, Star, Newspaper, BellRing, ExternalLink } from "lucide-react";
 import { useStore } from "@/lib/store";
-import { getGlobalNews } from "@/lib/news";
+import { getNgNews } from "@/lib/news";
+import { fetchGlobalCompanyNews, fetchGlobalStock } from "@/lib/api";
 import { formatMoney } from "@/lib/format";
 import PageFrame from "@/components/PageFrame";
 import PriceChart from "@/components/PriceChart";
@@ -21,18 +22,65 @@ export default function StockPage() {
   const [alertPrice, setAlertPrice] = useState("");
   const [alertCondition, setAlertCondition] = useState("above");
   const [marketNews, setMarketNews] = useState([]);
+  const [resolvedStock, setResolvedStock] = useState(null);
+  const [fallbackLoading, setFallbackLoading] = useState(false);
+  const [fallbackError, setFallbackError] = useState(false);
+
+  const tickerKey = String(ticker).toUpperCase();
+  const liveStock = getLiveStock(tickerKey);
 
   useEffect(() => {
-    getGlobalNews("general").then(setMarketNews).catch(() => setMarketNews([]));
-  }, []);
+    let cancelled = false;
+    setResolvedStock(null);
+    setFallbackError(false);
+    if (liveStock || stocksLoading) return undefined;
 
-  const s = getLiveStock(String(ticker).toUpperCase());
+    setFallbackLoading(true);
+    fetchGlobalStock(tickerKey)
+      .then((raw) => {
+        if (cancelled || raw?.error || raw?.current_price == null) return;
+        setResolvedStock({
+          ticker: raw.symbol || tickerKey,
+          name: raw.symbol || tickerKey,
+          sector: "Global market",
+          market: "Global",
+          currency: "USD",
+          price: raw.current_price,
+          changePct: raw.percent_change ?? 0,
+          change: raw.change,
+          prevClose: raw.previous_close,
+          dayHigh: raw.high_price,
+          dayLow: raw.low_price,
+          openPrice: raw.open_price,
+          timestamp: raw.timestamp ? raw.timestamp * 1000 : null,
+          history: []
+        });
+      })
+      .catch(() => { if (!cancelled) setFallbackError(true); })
+      .finally(() => { if (!cancelled) setFallbackLoading(false); });
+
+    return () => { cancelled = true; };
+  }, [tickerKey, liveStock, stocksLoading]);
+
+  useEffect(() => {
+    if (!liveStock && !resolvedStock) return;
+    const loader = (liveStock?.market || resolvedStock?.market) === "NGX"
+      ? getNgNews("corporate-news")
+      : fetchGlobalCompanyNews(tickerKey).then((items) => items.map((item, index) => ({
+        ...item,
+        id: item.id || tickerKey + "-news-" + index,
+        datetime: item.datetime ? item.datetime * 1000 : null
+      })));
+    loader.then(setMarketNews).catch(() => setMarketNews([]));
+  }, [tickerKey, liveStock, resolvedStock]);
+
+  const s = liveStock || resolvedStock;
 
   if (!s) {
     return (
       <>
         <PageFrame title="Stock not found">
-          <p className="iv-empty-sm">{stocksLoading ? "Loading live prices\u2026" : "We couldn't find that ticker."}</p>
+          <p className="iv-empty-sm">{stocksLoading || fallbackLoading ? "Loading live prices..." : fallbackError ? "We couldn't find that ticker." : "We couldn't find that ticker."}</p>
         </PageFrame>
       </>
     );
@@ -90,10 +138,10 @@ export default function StockPage() {
 
             <div className="iv-panel">
               <div className="iv-panel-head"><h3>Market news</h3><Newspaper size={16} className="muted" /></div>
-              <p className="iv-sub" style={{ marginBottom: 10 }}>General market headlines \u2014 not specific to {s.ticker}.</p>
+              <p className="iv-sub" style={{ marginBottom: 10 }}>{s.market === "NGX" ? "Nigerian company news." : "Company news."}</p>
               <div className="iv-notif-list">
                 {marketNews.slice(0, 5).map((n) => (
-                  <a key={n.id} className="iv-notif-item" href={n.url} style={{ display: "block" }}>
+                  <a key={n.id} className="iv-notif-item" href={n.url} style={{ display: "block" }} target="_blank" rel="noopener noreferrer">
                     <div>{n.headline} <ExternalLink size={12} className="muted" /></div>
                     <div className="iv-sub">{n.source}</div>
                   </a>

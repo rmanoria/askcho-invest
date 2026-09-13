@@ -1,14 +1,14 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, BarChart3, Newspaper, Lightbulb, Star, Menu } from "lucide-react";
+import { Home, BarChart3, Newspaper, Star, Menu, Lightbulb } from "lucide-react";
 
 const TABS = [
   { href: "/dashboard", label: "Home", icon: Home },
   { href: "/markets", label: "Markets", icon: BarChart3 },
   { href: "/news", label: "News", icon: Newspaper },
-  { href: "/ideas", label: "Ideas", icon: Lightbulb },
   { href: "/watchlist", label: "Watchlist", icon: Star },
+  { href: "/ideas", label: "Ideas", icon: Lightbulb },
   { href: "/more", label: "More", icon: Menu }
 ];
 

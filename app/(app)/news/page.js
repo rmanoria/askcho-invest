@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react";
 import { ExternalLink, Loader2 } from "lucide-react";
 import { getGlobalNews, getNgNews, hoursAgo } from "@/lib/news";
+import { useStore } from "@/lib/store";
 import { NIGERIA_NEWS_CATEGORIES } from "@/lib/api";
 import PageFrame from "@/components/PageFrame";
 import Select from "@/components/Select";
@@ -28,13 +29,14 @@ const AFRICA_COUNTRIES = ["Nigeria"];
 const PAGE_SIZE = 7;
 
 export default function NewsPage() {
+  const { state, setRegion } = useStore();
   const [tab, setTab] = useState(NIGERIA_TABS[0].id);
-  const [region, setRegion] = useState("Africa");
   const [country, setCountry] = useState("Nigeria");
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [page, setPage] = useState(1);
+  const region = state.region;
   // Nigeria is the only African news source available, so Region: Africa always
   // means the NG feed regardless of the Country sub-choice.
   const isNg = region === "Africa";
@@ -93,7 +95,7 @@ export default function NewsPage() {
         )}
 
         {!loading && hero && (
-          <a className="iv-panel iv-news-hero" href={hero.url}>
+          <a className="iv-panel iv-news-hero" href={hero.url} target="_blank">
             {hero.image && <div className="iv-news-hero-image" style={{ backgroundImage: "url(" + hero.image + ")" }} />}
             <div className="iv-news-hero-meta">
               <span className="iv-sub">{hero.source} <ExternalLink size={12} /></span>
@@ -107,7 +109,7 @@ export default function NewsPage() {
         {cards.length > 0 && (
           <div className="iv-news-masonry">
             {cards.map((n, index) => (
-              <a key={n.id} className="iv-news-card" href={n.url}>
+              <a key={n.id} className="iv-news-card" href={n.url} target="_blank">
                 {n.image && <div className="iv-news-card-image" style={{ backgroundImage: `url(${n.image}` }} />}
                 <div className="iv-news-card-body">
                   <div className="iv-news-card-meta"><span>{n.source}</span><span>{hoursAgo(n.datetime)}h ago</span></div>

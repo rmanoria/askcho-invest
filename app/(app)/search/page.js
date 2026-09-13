@@ -1,15 +1,14 @@
 "use client";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Search as SearchIcon, Star, Newspaper, LineChart, ExternalLink } from "lucide-react";
+import { Search as SearchIcon, Star, Newspaper, ExternalLink } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { MARKETS } from "@/lib/stocks";
-import { ALL_INDICES } from "@/lib/markets";
 import { getGlobalNews, hoursAgo } from "@/lib/news";
 import { formatMoney } from "@/lib/format";
 import PageFrame from "@/components/PageFrame";
 import MarketBadge from "@/components/MarketBadge";
-import Sparkline from "@/components/Sparkline";
+import TrendIndicator from "@/components/TrendIndicator";
 import FlashValue from "@/components/FlashValue";
 import { useAuthGate } from "@/components/AuthGate";
 
@@ -34,7 +33,6 @@ export default function SearchPage() {
     return matchesMarket && matchesQ;
   });
 
-  const indexMatches = needle ? ALL_INDICES.filter((ix) => ix.name.toLowerCase().includes(needle)).slice(0, 6) : [];
   const newsMatches = needle
     ? news.filter((n) => n.headline.toLowerCase().includes(needle) || n.source.toLowerCase().includes(needle)).slice(0, 6)
     : [];
@@ -51,24 +49,6 @@ export default function SearchPage() {
             <button key={m} className={"iv-filter-pill" + (market === m ? " active" : "")} onClick={() => setMarket(m)}>{m}</button>
           ))}
         </div>
-
-        {needle && indexMatches.length > 0 && (
-          <div className="iv-panel">
-            <div className="iv-panel-head"><h3>Indices</h3><LineChart size={16} className="muted" /></div>
-            <div className="iv-table-wrap"><table className="iv-table">
-              <thead><tr><th>Index</th><th>Value</th><th>Change</th></tr></thead>
-              <tbody>
-                {indexMatches.map((ix) => (
-                  <tr key={ix.name} onClick={() => router.push("/markets")} style={{ cursor: "pointer" }}>
-                    <td>{ix.name}</td>
-                    <td className="mono">{ix.value.toLocaleString(undefined, { maximumFractionDigits: 2 })}</td>
-                    <td className={"iv-chg " + (ix.changePct >= 0 ? "pos" : "neg")}>{ix.changePct >= 0 ? "+" : ""}{ix.changePct.toFixed(2)}%</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table></div>
-          </div>
-        )}
 
         {needle && newsMatches.length > 0 && (
           <div className="iv-panel">
@@ -106,7 +86,7 @@ export default function SearchPage() {
                     <td className={"iv-chg " + (s.changePct >= 0 ? "pos" : "neg")}>
                       {s.changePct >= 0 ? "+" : ""}{s.changePct.toFixed(2)}%
                     </td>
-                    <td className="iv-col-hide-mobile"><Sparkline data={s.history.slice(-14)} positive={s.changePct >= 0} /></td>
+                    <td className="iv-col-hide-mobile"><TrendIndicator changePct={s.changePct} /></td>
                     <td>
                       <button className="iv-star-btn" onClick={() => requireAuth(() => toggleWatch(s.ticker))} aria-label="Toggle watchlist">
                         <Star size={15} fill={watched ? "#ffffff" : "none"} />
@@ -115,7 +95,7 @@ export default function SearchPage() {
                   </tr>
                 );
               })}
-              {filtered.length === 0 && indexMatches.length === 0 && newsMatches.length === 0 && (
+              {filtered.length === 0 && newsMatches.length === 0 && (
                 <tr><td colSpan={7} className="iv-empty-sm">No results match your search.</td></tr>
               )}
             </tbody>

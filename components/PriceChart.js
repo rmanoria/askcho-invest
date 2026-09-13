@@ -11,6 +11,7 @@ function ChartTooltip({ active, payload, currency }) {
 export default function PriceChart({ history, positive, height = 240, currency }) {
   const [period, setPeriod] = useState("1M");
   const [hover, setHover] = useState(null);
+  if (!history || history.length === 0) return <p className="iv-empty-sm">{/**"Historical prices are not available yet"**/}.</p>;
   const slices = { "1W": 7, "1M": 30, "3M": 90, ALL: history.length };
   const data = history.slice(-slices[period]);
   const color = positive ? "#34d399" : "#fb7185";

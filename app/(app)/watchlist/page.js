@@ -6,7 +6,7 @@ import { useStore } from "@/lib/store";
 import { formatMoney } from "@/lib/format";
 import PageFrame from "@/components/PageFrame";
 import PriceChart from "@/components/PriceChart";
-import Sparkline from "@/components/Sparkline";
+import TrendIndicator from "@/components/TrendIndicator";
 import FlashValue from "@/components/FlashValue";
 
 export default function WatchlistPage() {
@@ -58,7 +58,7 @@ export default function WatchlistPage() {
                       <X size={15} />
                     </button>
                   </div>
-                  <Sparkline data={s.history.slice(-30)} positive={s.changePct >= 0} />
+                  <TrendIndicator changePct={s.changePct} />
                   <div className="iv-price-row">
                     <span className="mono"><FlashValue value={s.price} render={() => formatMoney(s.price, s.currency)} /></span>
                     <span className={"iv-chg " + (s.changePct >= 0 ? "pos" : "neg")}>

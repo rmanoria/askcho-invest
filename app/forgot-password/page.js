@@ -2,14 +2,26 @@
 import { useState } from "react";
 import Link from "next/link";
 import Logo from "@/components/Logo";
+import { requestPasswordReset } from "@/lib/auth";
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
   const [sent, setSent] = useState(false);
+  const [error, setError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
-  function submit(e) {
-    e.preventDefault();
-    setSent(true);
+  async function submit(event) {
+    event.preventDefault();
+    setError("");
+    setSubmitting(true);
+    try {
+      await requestPasswordReset(email.trim().toLowerCase());
+      setSent(true);
+    } catch (err) {
+      setError(err.message || "Unable to send password reset email.");
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   return (
@@ -22,21 +34,20 @@ export default function ForgotPasswordPage() {
         {!sent ? (
           <>
             <h1 className="iv-auth-title">Reset your password</h1>
-            <p className="iv-auth-sub">Enter the email on your account and we'll send a reset link.</p>
+            <p className="iv-auth-sub">Enter the email on your account and we&apos;ll send a reset link.</p>
             <form onSubmit={submit}>
               <label className="iv-field">
                 <span>Email</span>
-                <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@email.com" required />
+                <input type="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="you@email.com" required />
               </label>
-              <button type="submit" className="iv-btn-primary full">Send reset link</button>
+              {error && <p className="iv-empty-sm" style={{ margin: "0 0 12px" }}>{error}</p>}
+              <button type="submit" className="iv-btn-primary full" disabled={submitting}>{submitting ? "Sending..." : "Send reset link"}</button>
             </form>
           </>
         ) : (
           <>
             <h1 className="iv-auth-title">Check your email</h1>
-            <p className="iv-auth-sub">
-              If an account exists for <span className="mono">{email || "that address"}</span>, a reset link is on its way.
-            </p>
+            <p className="iv-auth-sub">If an account exists for <span className="mono">{email}</span>, a reset link is on its way.</p>
           </>
         )}
         <p className="iv-auth-switch">

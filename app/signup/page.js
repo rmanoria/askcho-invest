@@ -3,7 +3,8 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useStore } from "@/lib/store";
-import { createAccount, loginWithPassword } from "@/lib/api";
+import { createAccount, loginWithGoogle } from "@/lib/auth";
+import { Eye, EyeOff } from "lucide-react";
 import Logo from "@/components/Logo";
 
 export default function SignupPage() {
@@ -14,6 +15,30 @@ export default function SignupPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [googleSubmitting, setGoogleSubmitting] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+
+  function completeLogin(user, idToken) {
+    login({
+      name: user.displayName || (user.email ? user.email.split("@")[0] : "Investor"),
+      email: user.email,
+      id: user.uid
+    }, { access_token: idToken });
+    router.replace("/dashboard");
+  }
+
+  async function handleGoogleSignup() {
+    setError("");
+    setGoogleSubmitting(true);
+    try {
+      const { user, idToken } = await loginWithGoogle();
+      completeLogin(user, idToken);
+    } catch (err) {
+      setError(err.message || "Unable to sign up with Google.");
+    } finally {
+      setGoogleSubmitting(false);
+    }
+  }
 
   async function submit(e) {
     e.preventDefault();
@@ -25,23 +50,14 @@ export default function SignupPage() {
       const [firstName, ...rest] = trimmedName ? trimmedName.split(/\s+/) : ["Investor"];
       const lastName = rest.join(" ") || "User";
 
-      await createAccount({
+      const { user, idToken } = await createAccount({
         first_name: firstName,
         last_name: lastName,
         email: email.trim().toLowerCase(),
         password
       });
 
-      const payload = await loginWithPassword(email.trim().toLowerCase(), password);
-      const userData = payload?.user || payload?.data?.user || null;
-      const session = payload?.session || payload?.data?.session || null;
-
-      login({
-        name: trimmedName || (userData?.user_metadata?.full_name || "Investor"),
-        email: userData?.email || email.trim().toLowerCase(),
-        id: userData?.id || null
-      }, session);
-      router.replace("/dashboard");
+      completeLogin(user, idToken);
     } catch (err) {
       setError(err.message || "Unable to create account.");
     } finally {
@@ -59,6 +75,16 @@ export default function SignupPage() {
         <div className="iv-eyebrow center">NGX &middot; NYSE &middot; NASDAQ &middot; ETFs</div>
         <h1 className="iv-auth-title">Create your account</h1>
         <p className="iv-auth-sub">Start investing across Nigerian and US markets.</p>
+        <button type="button" className="iv-btn-google full" onClick={handleGoogleSignup} disabled={submitting || googleSubmitting}>
+          <span className="iv-google-icon" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 18 18">
+            <path fill="#4285F4" d="M17.64 9.2c0-.64-.06-1.25-.16-1.84H9v3.48h4.84a4.14 4.14 0 0 1-1.8 2.72v2.26h2.9c1.7-1.57 2.7-3.88 2.7-6.62z" />
+            <path fill="#34A853" d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.9-2.26c-.8.54-1.84.86-3.06.86-2.35 0-4.34-1.59-5.05-3.72H.95v2.33A9 9 0 0 0 9 18z" />
+            <path fill="#FBBC05" d="M3.95 10.7A5.4 5.4 0 0 1 3.66 9c0-.59.1-1.17.29-1.7V4.97H.95A9 9 0 0 0 0 9c0 1.45.35 2.83.95 4.03l3-2.33z" />
+            <path fill="#EA4335" d="M9 3.58c1.32 0 2.51.45 3.44 1.35l2.58-2.58C13.46.89 11.43 0 9 0A9 9 0 0 0 .95 4.97l3 2.33C4.66 5.17 6.65 3.58 9 3.58z" />
+          </svg></span>
+          {googleSubmitting ? "Signing up..." : "Continue with Google"}
+        </button>
+        <div className="iv-auth-divider"><span />or<span /></div>
         <form onSubmit={submit}>
           <label className="iv-field">
             <span>Full name</span>
@@ -70,10 +96,15 @@ export default function SignupPage() {
           </label>
           <label className="iv-field">
             <span>Password</span>
-            <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="********" required />
+            <span className="iv-password-field">
+              <input type={showPassword ? "text" : "password"} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="********" required />
+              <button type="button" className="iv-password-toggle" onClick={() => setShowPassword((visible) => !visible)} aria-label={showPassword ? "Hide password" : "Show password"} aria-pressed={showPassword}>
+                {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
+            </span>
           </label>
           {error && <p className="iv-empty-sm" style={{ margin: "0 0 12px" }}>{error}</p>}
-          <button type="submit" className="iv-btn-primary full" disabled={submitting}>{submitting ? "Creating account..." : "Create account"}</button>
+          <button type="submit" className="iv-btn-primary full" disabled={submitting || googleSubmitting}>{submitting ? "Creating account..." : "Create account"}</button>
         </form>
         <p className="iv-auth-switch">
           Already have an account? <Link href="/login" style={{ textDecoration: "underline", color: "var(--text)" }}>Sign in</Link>

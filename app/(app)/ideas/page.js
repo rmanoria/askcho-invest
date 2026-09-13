@@ -1,159 +1,210 @@
 "use client";
-import { useState, useRef, useEffect } from "react";
-import { useRouter } from "next/navigation";
-import { Send, Lightbulb, Star, Sparkles } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { ExternalLink, History, Lightbulb, LoaderCircle, Plus, Send } from "lucide-react";
 import { useStore } from "@/lib/store";
-import { formatMoney } from "@/lib/format";
-import { getTutorReply } from "@/lib/tutor";
+import { fetchConversation, fetchConversations, fetchNewsDigest, createConversation, sendConversationMessage } from "@/lib/api";
 import PageFrame from "@/components/PageFrame";
+import ReactMarkdown from "react-markdown";
 
-function pickReason(s) {
-  if (s.changePct >= 2) return "Strong momentum today, up " + s.changePct.toFixed(2) + "% \u2014 worth watching for continuation.";
-  if (s.changePct <= -2) return "Pulled back " + Math.abs(s.changePct).toFixed(2) + "% \u2014 could be a buy-the-dip setup if the sector holds up.";
-  return "Steady performer in " + s.sector + ", roughly flat today at " + s.changePct.toFixed(2) + "%.";
+const TOPICS = [
+    {
+        label: "P/E ratio",
+        prompt: "Explain how the price-to-earnings ratio is calculated, what high and low P/E values may indicate, how to compare P/E ratios across industries, and what limitations investors should keep in mind."
+    },
+    {
+        label: "Diversification",
+        prompt: "Explain how an investor can diversify across asset classes, sectors, companies, and regions, and how diversification can reduce concentration risk without guaranteeing against losses."
+    },
+    {
+        label: "ETFs",
+        prompt: "Explain how exchange-traded funds work, including their holdings, fees, liquidity, tracking error, and main risks, and describe what an investor should check before choosing one."
+    },
+    {
+        label: "Dividends",
+        prompt: "Explain how dividends work and how investors should assess dividend yield, payout ratio, cash-flow coverage, dividend growth, and the risk of a dividend cut."
+    },
+    {
+        label: "Volatility",
+        prompt: "Explain what causes stock-price volatility, how it can be measured, how it differs from a permanent loss of capital, and how long-term investors can manage it."
+    },
+    {
+        label: "Market cap",
+        prompt: "Explain market capitalization and compare the typical growth potential, liquidity, stability, and risks of large-cap, mid-cap, and small-cap companies."
+    },
+    {
+        label: "NGX",
+        prompt: "Give me an investor-focused overview of the Nigerian Exchange, including its major sectors, liquidity and currency considerations, key risks, useful valuation metrics, and how to research an NGX-listed company without making a specific buy or sell recommendation."
+    },
+    {
+        label: "Risk",
+        prompt: "Help me understand investment risk by covering market, company, liquidity, inflation, interest-rate, currency, concentration, and behavioral risks, and explain how time horizon and financial goals affect risk management."
+    }
+];
+
+function formatDate(value) {
+    if (!value) return "";
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? "" : date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
 }
 
 export default function IdeasPage() {
-  const { state, getFeaturedLiveStocks, toggleWatch } = useStore();
-  const router = useRouter();
-  const stocks = getFeaturedLiveStocks();
+    const { state } = useStore();
+    const sessionToken = state.session?.access_token;
+    const [digest, setDigest] = useState(null);
+    const [digestLoading, setDigestLoading] = useState(true);
+    const [digestError, setDigestError] = useState("");
+    const [conversations, setConversations] = useState([]);
+    const [conversationId, setConversationId] = useState(null);
+    const [messages, setMessages] = useState([]);
+    const [historyLoading, setHistoryLoading] = useState(true);
+    const [messagesLoading, setMessagesLoading] = useState(false);
+    const [input, setInput] = useState("");
+    const [sending, setSending] = useState(false);
+    const [chatError, setChatError] = useState("");
+    const logRef = useRef(null);
 
-  const avgChange = stocks.length ? stocks.reduce((a, s) => a + s.changePct, 0) / stocks.length : 0;
-  const leader = stocks.length ? [...stocks].sort((a, b) => b.changePct - a.changePct)[0] : null;
-  const laggard = stocks.length ? [...stocks].sort((a, b) => a.changePct - b.changePct)[0] : null;
+    useEffect(() => {
+        let cancelled = false;
+        setDigestLoading(true);
+        fetchNewsDigest()
+            .then((data) => { if (!cancelled) setDigest(data); })
+            .catch(() => { if (!cancelled) setDigestError("Unable to load the AI news digest."); })
+            .finally(() => { if (!cancelled) setDigestLoading(false); });
+        return () => { cancelled = true; };
+    }, []);
 
-  const sectorMap = {};
-  stocks.forEach((s) => { (sectorMap[s.sector] = sectorMap[s.sector] || []).push(s); });
-  const sectorStats = Object.entries(sectorMap).map(([sector, list]) => ({
-    sector, avg: list.reduce((a, s) => a + s.changePct, 0) / list.length, count: list.length
-  }));
-  const bestSector = sectorStats.length ? [...sectorStats].sort((a, b) => b.avg - a.avg)[0] : null;
-  const worstSector = sectorStats.length ? [...sectorStats].sort((a, b) => a.avg - b.avg)[0] : null;
+    useEffect(() => {
+        if (!sessionToken) {
+            setConversations([]);
+            setConversationId(null);
+            setMessages([]);
+            setHistoryLoading(false);
+            return undefined;
+        }
+        let cancelled = false;
+        setHistoryLoading(true);
+        fetchConversations(sessionToken)
+            .then((items) => {
+                if (cancelled) return;
+                setConversations(Array.isArray(items) ? items : []);
+            })
+            .catch(() => { if (!cancelled) setChatError("Unable to load chat history."); })
+            .finally(() => { if (!cancelled) setHistoryLoading(false); });
+        return () => { cancelled = true; };
+    }, [sessionToken]);
 
-  const ngxStocks = stocks.filter((s) => s.market === "NGX");
-  const globalStocks = stocks.filter((s) => s.market !== "NGX");
-  const ngxAvg = ngxStocks.length ? ngxStocks.reduce((a, s) => a + s.changePct, 0) / ngxStocks.length : 0;
-  const globalAvg = globalStocks.length ? globalStocks.reduce((a, s) => a + s.changePct, 0) / globalStocks.length : 0;
+    useEffect(() => {
+        if (logRef.current) logRef.current.scrollTop = logRef.current.scrollHeight;
+    }, [messages, sending]);
 
-  const SUMMARIES = [
-    {
-      tag: "Overview",
-      text: (
-        <>Markets are broadly {avgChange >= 0 ? "higher" : "lower"} today, averaging {avgChange >= 0 ? "+" : ""}{avgChange.toFixed(2)}% across tracked stocks.
-          {leader && <> <span className="mono">{leader.ticker}</span> leads, up {leader.changePct.toFixed(2)}%.</>}
-          {laggard && <> <span className="mono">{laggard.ticker}</span> is lagging, down {Math.abs(laggard.changePct).toFixed(2)}%.</>}</>
-      )
-    },
-    {
-      tag: "Sector spotlight",
-      text: bestSector && worstSector ? (
-        <>The {bestSector.sector} sector is leading today, averaging {bestSector.avg >= 0 ? "+" : ""}{bestSector.avg.toFixed(2)}% across {bestSector.count} stock{bestSector.count === 1 ? "" : "s"}.
-          {worstSector.sector !== bestSector.sector && <> {worstSector.sector} is the weakest, down {Math.abs(worstSector.avg).toFixed(2)}% on average.</>}</>
-      ) : "Not enough sector data to compare yet."
-    },
-    {
-      tag: "NGX vs international",
-      text: (
-        <>NGX-listed stocks are averaging {ngxAvg >= 0 ? "+" : ""}{ngxAvg.toFixed(2)}% today, {ngxAvg >= globalAvg ? "outperforming" : "trailing"} international names, which are averaging {globalAvg >= 0 ? "+" : ""}{globalAvg.toFixed(2)}%.</>
-      )
+    async function selectConversation(id) {
+        if (!sessionToken || id === conversationId || sending) return;
+        setConversationId(id);
+        setMessagesLoading(true);
+        setChatError("");
+        try {
+            const conversation = await fetchConversation(id, sessionToken);
+            setMessages((conversation.messages || []).map((message) => ({
+                role: message.role === "bot" ? "tutor" : "user",
+                text: message.message
+            })));
+        } catch (error) {
+            setChatError(error.message || "Unable to load this conversation.");
+        } finally {
+            setMessagesLoading(false);
+        }
     }
-  ];
 
-  const picks = [...stocks].sort((a, b) => b.changePct - a.changePct).slice(0, 5);
+    function startNewChat() {
+        if (sending) return;
+        setConversationId(null);
+        setMessages([]);
+        setInput("");
+        setChatError("");
+    }
 
-  const [messages, setMessages] = useState([
-    { role: "tutor", text: "Ask me to explain any of these picks, or about a market concept \u2014 P/E ratios, diversification, dividends, ETFs, or how the NGX works." }
-  ]);
-  const [input, setInput] = useState("");
-  const [typing, setTyping] = useState(false);
-  const logRef = useRef(null);
+    async function send(text) {
+        const question = (text || input).trim();
+        if (!question || sending || !sessionToken) return;
+        setInput("");
+        setChatError("");
+        setMessages((current) => [...current, { role: "user", text: question }]);
+        setSending(true);
+        try {
+            let activeId = conversationId;
+            if (!activeId) {
+                const conversation = await createConversation(sessionToken);
+                activeId = conversation.id;
+                setConversationId(activeId);
+                setConversations((current) => [conversation, ...current]);
+            }
+            const response = await sendConversationMessage(activeId, question, sessionToken);
+            setMessages((current) => [...current, { role: "tutor", text: response.message }]);
+            const updated = await fetchConversations(sessionToken);
+            setConversations(Array.isArray(updated) ? updated : []);
+        } catch (error) {
+            setChatError(error.message || "Unable to send your message.");
+        } finally {
+            setSending(false);
+        }
+    }
 
-  useEffect(() => {
-    if (logRef.current) logRef.current.scrollTop = logRef.current.scrollHeight;
-  }, [messages, typing]);
-
-  function send(text) {
-    const q = text || input;
-    if (!q.trim() || typing) return;
-    setMessages((m) => [...m, { role: "user", text: q }]);
-    setInput("");
-    setTyping(true);
-    setTimeout(() => {
-      setMessages((m) => [...m, { role: "tutor", text: getTutorReply(q) }]);
-      setTyping(false);
-    }, 550);
-  }
-
-  return (
-    <>
-      <PageFrame title="Ideas">
-
-        <div className="iv-panel">
-          <div className="iv-panel-head"><h3>AI market summaries</h3><Lightbulb size={16} className="muted" /></div>
-          {stocks.length === 0 ? (
-            <p className="iv-empty-sm">Loading live prices\u2026</p>
-          ) : (
-            <div className="iv-summary-list">
-              {SUMMARIES.map((s) => (
-                <div key={s.tag} className="iv-summary-item">
-                  <div className="iv-eyebrow">{s.tag.toUpperCase()}</div>
-                  <p className="iv-sub" style={{ marginBottom: 0 }}>{s.text}</p>
-                </div>
-              ))}
+    return (
+        <PageFrame title="Ideas">
+            <div className="iv-panel">
+                <div className="iv-panel-head"><h3>AI market digest</h3><Lightbulb size={16} className="muted" /></div>
+                {digestLoading ? <p className="iv-empty-sm">Preparing today&apos;s digest...</p> : digestError ? <p className="iv-empty-sm">{digestError}</p> : digest ? (
+                    <>
+                        <p className="iv-sub iv-digest-overview">{digest.overview}</p>
+                        <div className="iv-summary-list">
+                            {(digest.highlights || []).map((highlight) => (
+                                <div key={highlight.headline} className="iv-summary-item">
+                                    <div className="iv-panel-head" style={{ marginBottom: 6 }}>
+                                        <div className={`iv-eyebrow iv-sentiment-${highlight.sentiment}`}>{highlight.sentiment}</div>
+                                        {highlight.published_at && <span className="iv-sub">{formatDate(highlight.published_at)}</span>}
+                                    </div>
+                                    <p className="iv-sub" style={{ marginBottom: 5 }}><strong>{highlight.headline}</strong></p>
+                                    <p className="iv-sub" style={{ marginBottom: highlight.url ? 7 : 0 }}>{highlight.why_it_matters}</p>
+                                    {highlight.url && <a className="iv-inline-link" href={highlight.url} target="_blank" rel="noreferrer">Read source <ExternalLink size={12} /></a>}
+                                </div>
+                            ))}
+                            {!digest.highlights?.length && <p className="iv-empty-sm">No major market-moving stories were found in the latest news.</p>}
+                        </div>
+                    </>
+                ) : null}
             </div>
-          )}
-        </div>
 
-        <div className="iv-panel">
-          <div className="iv-panel-head"><h3>Stocks picked by AI</h3><Sparkles size={16} className="muted" /></div>
-          <p className="iv-sub" style={{ marginBottom: 12 }}>A daily shortlist based on today's momentum. Not financial advice \u2014 always do your own research.</p>
-          <div className="iv-idea-list">
-            {picks.map((s) => {
-              const watched = state.watchlist.includes(s.ticker);
-              return (
-                <div key={s.ticker} className="iv-idea-card">
-                  <div className="iv-idea-card-top" onClick={() => router.push("/stock/" + s.ticker)} style={{ cursor: "pointer" }}>
-                    <div>
-                      <div className="mono">{s.ticker}</div>
-                      <div className="iv-sub">{s.name}</div>
-                    </div>
-                    <div style={{ textAlign: "right" }}>
-                      <div className="mono">{formatMoney(s.price, s.currency)}</div>
-                      <div className={"iv-chg " + (s.changePct >= 0 ? "pos" : "neg")}>{s.changePct >= 0 ? "+" : ""}{s.changePct.toFixed(2)}%</div>
-                    </div>
-                  </div>
-                  <p className="iv-idea-reason">{pickReason(s)}</p>
-                  <button className="iv-btn-ghost sm" onClick={() => toggleWatch(s.ticker)}>
-                    <Star size={14} fill={watched ? "#ffffff" : "none"} /> {watched ? "On watchlist" : "Add to watchlist"}
-                  </button>
+            <div className="iv-panel iv-learn-panel">
+                <div className="iv-panel-head iv-chat-heading">
+                    <div><h3>Ask AI</h3><p className="iv-sub">Your conversations are saved to your account.</p></div>
+                    <button className="iv-btn-ghost sm" onClick={startNewChat} disabled={sending}><Plus size={14} /> New chat</button>
                 </div>
-              );
-            })}
-          </div>
-        </div>
-
-        <div className="iv-panel iv-learn-panel">
-          <div className="iv-panel-head"><h3>Ask AI</h3></div>
-          <div className="iv-chat-log" ref={logRef}>
-            {messages.map((m, i) => (
-              <div key={i} className={"iv-chat-msg " + m.role}>{m.text}</div>
-            ))}
-            {typing && (
-              <div className="iv-chat-msg tutor iv-chat-typing"><span /><span /><span /></div>
-            )}
-          </div>
-          <div className="iv-topic-chips">
-            {["P/E ratio", "Diversification", "ETFs", "Dividends", "Volatility", "Market cap", "NGX", "Risk"].map((t) => (
-              <button key={t} className="iv-chip" onClick={() => send(t)}>{t}</button>
-            ))}
-          </div>
-          <div className="iv-chat-input">
-            <input placeholder="Ask about markets, stocks, or investing..." value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => e.key === "Enter" && send()} />
-            <button className="iv-btn-primary sm" onClick={() => send()} aria-label="Send"><Send size={14} /></button>
-          </div>
-        </div>
-
-      </PageFrame>
-    </>
-  );
+                <div className="iv-chat-history">
+                    <div className="iv-chat-history-head"><span><History size={14} /> History</span>{historyLoading && <LoaderCircle size={14} className="iv-spin" />}</div>
+                    {!historyLoading && !conversations.length && <p className="iv-empty-sm">No saved conversations yet.</p>}
+                    {conversations.map((conversation) => (
+                        <button key={conversation.id} className={"iv-chat-history-item " + (conversation.id === conversationId ? "active" : "")} onClick={() => selectConversation(conversation.id)} disabled={sending}>
+                            <span>{conversation.title || "New conversation"}</span><small>{formatDate(conversation.updated_at)}</small>
+                        </button>
+                    ))}
+                </div>
+                <div className="iv-chat-log" ref={logRef}>
+                    {!messages.length && !messagesLoading && <div className="iv-chat-msg tutor">Ask me about the latest market news, stocks, or investing concepts.</div>}
+                    {messages.map((message, index) => <div key={index} className={"iv-chat-msg " + message.role}>
+                        <ReactMarkdown>{message.text}</ReactMarkdown>
+                    </div>)}
+                    {messagesLoading && <div className="iv-chat-msg tutor iv-chat-typing"><span /><span /><span /></div>}
+                    {sending && <div className="iv-chat-msg tutor iv-chat-typing"><span /><span /><span /></div>}
+                </div>
+                {chatError && <p className="iv-form-error">{chatError}</p>}
+                <div className="iv-topic-chips">
+                    {TOPICS.map((topic) => <button key={topic.label} className="iv-chip" onClick={() => send(topic.prompt)} disabled={sending}>{topic.label}</button>)}
+                </div>
+                <div className="iv-chat-input">
+                    <input placeholder="Ask about markets, stocks, or investing..." value={input} disabled={sending} onChange={(event) => setInput(event.target.value)} onKeyDown={(event) => event.key === "Enter" && send()} />
+                    <button className="iv-btn-primary sm" onClick={() => send()} disabled={sending || !input.trim()} aria-label="Send"><Send size={14} /></button>
+                </div>
+            </div>
+        </PageFrame>
+    );
 }

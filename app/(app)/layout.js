@@ -4,7 +4,6 @@ import { useStore } from "@/lib/store";
 import BottomNav from "@/components/BottomNav";
 import ScrollReveal from "@/components/ScrollReveal";
 import PageTransition from "@/components/PageTransition";
-import FloatingChat from "@/components/FloatingChat";
 import AuthRequired from "@/components/AuthRequired";
 import { AuthGateProvider } from "@/components/AuthGate";
 
@@ -35,7 +34,6 @@ export default function AppLayout({ children }) {
           <PageTransition>{blocked ? <AuthRequired /> : children}</PageTransition>
         </div>
         <BottomNav />
-        <FloatingChat />
       </div>
     </AuthGateProvider>
   );

@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { BellRing, Users, Lightbulb, Settings, LogOut, ChevronRight } from "lucide-react";
+import { BellRing, Settings, LogOut, ChevronRight } from "lucide-react";
 import { useStore } from "@/lib/store";
 import PageFrame from "@/components/PageFrame";
 
@@ -9,13 +9,6 @@ const GROUPS = [
     title: "Track",
     items: [
       { href: "/alerts", label: "Alerts", icon: BellRing }
-    ]
-  },
-  {
-    title: "Community & AI",
-    items: [
-      { href: "/community", label: "Community", icon: Users },
-      { href: "/ideas", label: "Ideas", icon: Lightbulb }
     ]
   },
   {
