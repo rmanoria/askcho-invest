@@ -6,6 +6,8 @@ import ScrollReveal from "@/components/ScrollReveal";
 import PageTransition from "@/components/PageTransition";
 import AuthRequired from "@/components/AuthRequired";
 import { AuthGateProvider } from "@/components/AuthGate";
+import FloatingChat from "@/components/FloatingChat";
+import { ConversationProvider } from "@/components/ConversationProvider";
 
 // Routes that require the user to be logged in. Everything else (home/dashboard,
 // markets, news, search, stock detail, more) is open to guests.
@@ -25,16 +27,19 @@ export default function AppLayout({ children }) {
 
   return (
     <AuthGateProvider>
-      <div className="iv-shell">
-        <div className="iv-shell-aurora" aria-hidden="true">
-          <span></span><span></span>
+      <ConversationProvider>
+        <div className="iv-shell">
+          <div className="iv-shell-aurora" aria-hidden="true">
+            <span></span><span></span>
+          </div>
+          <div className="iv-main">
+            <ScrollReveal />
+            <PageTransition>{blocked ? <AuthRequired /> : children}</PageTransition>
+          </div>
+          <FloatingChat />
+          <BottomNav />
         </div>
-        <div className="iv-main">
-          <ScrollReveal />
-          <PageTransition>{blocked ? <AuthRequired /> : children}</PageTransition>
-        </div>
-        <BottomNav />
-      </div>
+      </ConversationProvider>
     </AuthGateProvider>
   );
 }

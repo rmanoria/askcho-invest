@@ -14,6 +14,12 @@
   --font-mono: var(--font-jetbrains-mono, 'JetBrains Mono'), monospace;
 }
 
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
 img,
 svg {
   max-width: 100%;
@@ -158,11 +164,18 @@ h3,
 /* floating AI chatbot \u2014 hovering entry point on every screen, like a customer-service widget */
 .iv-floating-chat {
   position: fixed;
+  right: 24px;
+  bottom: 116px;
   z-index: 80;
   display: flex;
   flex-direction: column;
   align-items: flex-end;
   gap: 12px;
+  pointer-events: none;
+}
+
+.iv-floating-chat>* {
+  pointer-events: auto;
 }
 
 .iv-floating-chat-btn-wrap {
@@ -220,7 +233,8 @@ h3,
 
 .iv-floating-chat-panel {
   width: min(92vw, 380px);
-  max-height: min(78vh, 560px);
+  height: min(78dvh, 560px, calc(100dvh - 150px));
+  max-height: calc(100dvh - 150px);
   display: flex;
   flex-direction: column;
   background: linear-gradient(155deg, rgba(23, 23, 28, .96), rgba(13, 13, 16, .94));
@@ -230,6 +244,40 @@ h3,
   border-radius: 16px;
   box-shadow: 0 24px 60px -14px rgba(0, 0, 0, .65), inset 0 1px 0 rgba(255, 255, 255, .06);
   overflow: hidden;
+}
+
+.iv-floating-chat-panel .iv-conversation-panel {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  flex-direction: column;
+}
+
+.iv-floating-chat-panel .iv-chat-history {
+  flex: 0 1 auto;
+  max-height: 112px;
+  overflow-y: auto;
+  margin-bottom: 0;
+  padding: 10px 14px;
+}
+
+.iv-floating-chat-panel .iv-chat-log {
+  min-height: 96px;
+}
+
+.iv-floating-chat-head-mark {
+  align-items: center;
+  background: var(--text);
+  border-radius: 50%;
+  color: var(--bg);
+  display: flex;
+  flex: 0 0 28px;
+  font-family: var(--font-display);
+  font-size: 15px;
+  font-weight: 700;
+  height: 28px;
+  justify-content: center;
+  width: 28px;
 }
 
 .iv-floating-chat-panel .iv-chat-log {
@@ -349,6 +397,19 @@ h3,
   border-radius: 50%;
   background: var(--pos);
   border: 2px solid #fff;
+}
+
+.iv-conversation-panel:not(.compact) {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  margin-bottom: 20px;
+  padding: 22px;
+}
+
+.iv-conversation-panel.compact .iv-chat-log {
+  padding-left: 14px;
+  padding-right: 14px;
 }
 
 .iv-floating-chat-panel .iv-chat-log {
@@ -669,6 +730,7 @@ a {
 /* ---------- app shell (no sidebar \u2014 bottom nav on every screen size) ---------- */
 .iv-shell {
   min-height: 100vh;
+  min-width: 0;
 }
 
 .iv-logo-wrap {
@@ -732,6 +794,7 @@ a {
 
 .iv-main {
   width: 100%;
+  min-width: 0;
   display: flex;
   flex-direction: column;
 }
@@ -766,6 +829,7 @@ a {
   display: flex;
   align-items: center;
   gap: 11px;
+  min-width: 0;
 }
 
 .iv-topbar-brand:hover .iv-logo3d-wrap {
@@ -777,6 +841,7 @@ a {
   display: flex;
   align-items: center;
   gap: 10px;
+  min-width: 0;
   flex-wrap: wrap;
   justify-content: flex-end;
 }
@@ -984,6 +1049,7 @@ a {
   margin: 0 auto;
   padding: 28px;
   width: 100%;
+  min-width: 0;
 }
 
 .iv-grid-2 {
@@ -3307,6 +3373,11 @@ a {
     width: min(300px, calc(100vw - 32px));
     right: -8px;
   }
+
+  .iv-floating-chat {
+    right: 16px;
+    bottom: calc(104px + env(safe-area-inset-bottom));
+  }
 }
 
 @media(max-width:560px) {
@@ -3330,6 +3401,25 @@ a {
 
   .iv-panel {
     padding: 16px;
+  }
+
+  .iv-conversation-panel:not(.compact) {
+    padding: 16px;
+  }
+
+  .iv-floating-chat {
+    right: 12px;
+    bottom: calc(100px + env(safe-area-inset-bottom));
+  }
+
+  .iv-floating-chat-panel {
+    width: calc(100vw - 24px);
+    height: min(78dvh, calc(100dvh - 132px));
+    max-height: calc(100dvh - 132px);
+  }
+
+  .iv-floating-chat-panel .iv-chat-log {
+    padding-top: 10px;
   }
 
   .iv-modal {
