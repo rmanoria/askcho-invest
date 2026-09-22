@@ -2,7 +2,7 @@
 import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowUpRight, ArrowDownRight, ChevronRight, ChevronLeft as ChevronLeftIcon, Plus, ExternalLink } from "lucide-react";
+import { ArrowUpRight, ArrowDownRight, ChevronRight, Plus, ExternalLink } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { fetchGlobalMovers, fetchNgMovers, fetchNgIndices, fetchGlobalIndices } from "@/lib/api";
 import { getGlobalNews, getNgNews, hoursAgo } from "@/lib/news";
@@ -17,10 +17,7 @@ import SkeletonTableRow from "@/components/SkeletonTableRow";
 import SkeletonHero from "@/components/SkeletonHero";
 import { useAuthGate } from "@/components/AuthGate";
 
-const INSIGHT_TABS = [
-  { id: "gainers", label: "Top gainers", short: "Gainers" },
-  { id: "losers", label: "Top losers", short: "Losers" },
-];
+
 
 // Region/Country is the real NG-vs-Global split; Category tabs then pick which
 // real category to show within the Global feed (all four map cleanly, no hijacking).
@@ -34,6 +31,7 @@ const GLOBAL_NEWS_TABS = [
 ];
 
 const NIGERIA_NEWS_TABS = [
+  { id: "markets", label: "Markets", short: "Markets", source: "markets" },
   { id: "corporate-news", label: "Corporate", short: "Corporate", source: "corporate-news" },
   { id: "economy", label: "Economy", short: "Economy", source: "economy" },
   { id: "industries", label: "Industries", short: "Industries", source: "industries" },
@@ -42,22 +40,6 @@ const NIGERIA_NEWS_TABS = [
   { id: "product-updates", label: "Product Updates", short: "Updates", source: "product-updates" }
 ];
 
-function normalizeMoversArray(items = [], market) {
-  return items.map((item, idx) => {
-    const changePercentage = Number(String(item.change_percentage ?? item.changePct ?? item.change ?? item.percent_change ?? "0").replace(/[%,%]/g, ""));
-    const price = Number(item.current_price ?? item.last_price ?? item.price ?? 0);
-
-    return {
-      id: item.ticker || item.symbol || `mover-${idx}`,
-      ticker: item.ticker || item.symbol || `G-${idx}`,
-      name: item.company || item.name || item.ticker || item.symbol || "Global stock",
-      market,
-      price,
-      changePct: Number.isFinite(changePercentage) ? changePercentage : 0,
-      currency: item.currency
-    };
-  });
-}
 
 function normalizeIndices(payload = []) {
   const items = Array.isArray(payload)
@@ -115,23 +97,17 @@ export default function DashboardPage() {
   const { state, region, setRegion, getAllLiveStocks, getFeaturedLiveStocks, toggleWatch, addAlert } = useStore();
   const { requireAuth } = useAuthGate();
   const router = useRouter();
-  const [insightTab, setInsightTab] = useState("gainers");
-  const [insightDir, setInsightDir] = useState("next");
-  const [newsTab, setNewsTab] = useState("general");
+
+  const [newsTab, setNewsTab] = useState("markets");
   const [newsCountry, setNewsCountry] = useState("Nigeria");
   const [news, setNews] = useState([]);
   const [newsLoading, setNewsLoading] = useState(true);
   const [newsError, setNewsError] = useState(false);
-  const [globalGainers, setGlobalGainers] = useState([]);
-  const [globalLosers, setGlobalLosers] = useState([]);
+  const [watchModalStock, setWatchModalStock] = useState(null);
   const [ngIndices, setNgIndices] = useState([]);
   const [marketMoversLoading, setMarketMoversLoading] = useState(true);
-  const [watchModalStock, setWatchModalStock] = useState(null);
-  const insightIndex = INSIGHT_TABS.findIndex((t) => t.id === insightTab);
-  const touchX = useRef(null);
-  // Nigeria is the only African news source available, so Region: Africa always
-  // means the NG feed regardless of the Country sub-choice.
   const isNg = region === "Africa";
+
 
   useEffect(() => {
     let cancelled = false;
@@ -139,7 +115,7 @@ export default function DashboardPage() {
     setNewsError(false);
     setNews([]);
     const tabs = isNg ? NIGERIA_NEWS_TABS : GLOBAL_NEWS_TABS;
-    const selectedTab = tabs.find((t) => t.id === newsTab) || tabs[0];
+    const selectedTab = tabs.find((t) => t.id === newsTab) || tabs[1];
     const loader = isNg ? getNgNews(selectedTab.source) : getGlobalNews(selectedTab.source);
 
     loader
@@ -153,42 +129,20 @@ export default function DashboardPage() {
     return () => { cancelled = true; };
   }, [newsTab, isNg]);
 
-  function goToInsight(id) {
-    const targetIndex = INSIGHT_TABS.findIndex((t) => t.id === id);
-    setInsightDir(targetIndex >= insightIndex ? "next" : "prev");
-    setInsightTab(id);
-  }
-  function insightNext() { setInsightDir("next"); setInsightTab(INSIGHT_TABS[(insightIndex + 1) % INSIGHT_TABS.length].id); }
-  function insightPrev() { setInsightDir("prev"); setInsightTab(INSIGHT_TABS[(insightIndex - 1 + INSIGHT_TABS.length) % INSIGHT_TABS.length].id); }
-  function onInsightTouchStart(e) { touchX.current = e.touches[0].clientX; }
-  function onInsightTouchEnd(e) {
-    if (touchX.current === null) return;
-    const delta = e.changedTouches[0].clientX - touchX.current;
-    if (delta < -40) insightNext();
-    else if (delta > 40) insightPrev();
-    touchX.current = null;
-  }
+
+
   useEffect(() => {
     let cancelled = false;
 
-    async function loadMovers() {
+    async function loadIndices() {
       setMarketMoversLoading(true);
-      setGlobalGainers([]);
-      setGlobalLosers([]);
       setNgIndices([]);
 
-      const [moversResult, indicesResult] = await Promise.allSettled([
-        isNg ? fetchNgMovers() : fetchGlobalMovers(),
+      const [indicesResult] = await Promise.allSettled([
         isNg ? fetchNgIndices() : fetchGlobalIndices()
       ]);
 
       if (cancelled) return;
-
-      if (moversResult.status === "fulfilled") {
-        const moversPayload = moversResult.value;
-        setGlobalGainers(normalizeMoversArray(moversPayload?.top_gainers || [], isNg ? "NGX" : "Global"));
-        setGlobalLosers(normalizeMoversArray(moversPayload?.top_losers || [], isNg ? "NGX" : "Global"));
-      }
 
       if (indicesResult.status === "fulfilled") {
         setNgIndices(normalizeIndices(indicesResult.value));
@@ -197,9 +151,10 @@ export default function DashboardPage() {
       setMarketMoversLoading(false);
     }
 
-    loadMovers();
+    loadIndices();
     return () => { cancelled = true; };
   }, [isNg]);
+
 
   const stocks = getAllLiveStocks();
   const featured = getFeaturedLiveStocks()
@@ -208,10 +163,7 @@ export default function DashboardPage() {
   const [hero, ...restNews] = news;
   const newsCards = restNews.slice(0, 3);
 
-  // Use real API data, fall back to live stocks if needed
-  const gainers = globalGainers
-  const losers = globalLosers
-  const topGainers = gainers.slice(0, 4);
+
 
   return (
     <>
@@ -316,88 +268,7 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Market insights \u2014 movers / gainers / losers / calendar as a swipeable 3D card carousel */}
-        <div className="iv-panel iv-insight-panel">
-          <div className="iv-insight-head">
-            <div className="iv-news-tabs iv-home-news-tabs">
-              {INSIGHT_TABS.map((t) => (
-                <button key={t.id} className={"iv-news-tab" + (insightTab === t.id ? " active" : "")} onClick={() => goToInsight(t.id)}>
-                  <span className="iv-tab-full">{t.label}</span>
-                  <span className="iv-tab-short">{t.short}</span>
-                </button>
-              ))}
-            </div>
-          </div>
 
-          <button className="iv-insight-nav-btn edge left" onClick={insightPrev} aria-label="Previous"><ChevronLeftIcon size={17} /></button>
-          <button className="iv-insight-nav-btn edge right" onClick={insightNext} aria-label="Next"><ChevronRight size={17} /></button>
-
-          <div className="iv-insight-viewport" onTouchStart={onInsightTouchStart} onTouchEnd={onInsightTouchEnd}>
-            <div key={insightTab} className={"iv-insight-slide dir-" + insightDir}>
-
-
-
-              {insightTab === "gainers" && (
-                <div className="iv-table-wrap"><table className="iv-table">
-                  <thead><tr><th>Stock</th><th>Change</th><th>Price</th></tr></thead>
-                  <tbody>
-                    {!marketMoversLoading && gainers.map((s) => (
-                      <tr key={s.id || s.ticker} onClick={() => router.push("/stock/" + s.ticker)} style={{ cursor: "pointer" }}>
-                        <td><span className="mono">{s.ticker}</span><span className="iv-sub"> {s.name}</span></td>
-                        <td className="mono iv-pos-text">+{s.changePct.toFixed(2)}%</td>
-                        <td className="mono"><FlashValue value={s.price} render={() => formatMoney(s.price, s.currency)} /></td>
-                      </tr>
-                    ))}
-                    {marketMoversLoading && gainers.length === 0 && (
-                      <>
-                        <SkeletonTableRow colCount={3} />
-                        <SkeletonTableRow colCount={3} />
-                        <SkeletonTableRow colCount={3} />
-                        <SkeletonTableRow colCount={3} />
-                      </>
-                    )}
-                    {!marketMoversLoading && gainers.length === 0 && (
-                      <tr><td colSpan={3} className="iv-empty-sm">No top gainers available right now.</td></tr>
-                    )}
-                  </tbody>
-                </table></div>
-              )}
-
-              {insightTab === "losers" && (
-                <div className="iv-table-wrap"><table className="iv-table">
-                  <thead><tr><th>Stock</th><th>Change</th><th>Price</th></tr></thead>
-                  <tbody>
-                    {!marketMoversLoading && losers.map((s) => (
-                      <tr key={s.id || s.ticker} onClick={() => router.push("/stock/" + s.ticker)} style={{ cursor: "pointer" }}>
-                        <td><span className="mono">{s.ticker}</span><span className="iv-sub"> {s.name}</span></td>
-                        <td className="mono iv-neg-text">{s.changePct.toFixed(2)}%</td>
-                        <td className="mono"><FlashValue value={s.price} render={() => formatMoney(s.price, s.currency)} /></td>
-                      </tr>
-                    ))}
-                    {marketMoversLoading && losers.length === 0 && (
-                      <>
-                        <SkeletonTableRow colCount={3} />
-                        <SkeletonTableRow colCount={3} />
-                        <SkeletonTableRow colCount={3} />
-                        <SkeletonTableRow colCount={3} />
-                      </>
-                    )}
-                    {!marketMoversLoading && losers.length === 0 && (
-                      <tr><td colSpan={3} className="iv-empty-sm">No top losers available right now.</td></tr>
-                    )}
-                  </tbody>
-                </table></div>
-              )}
-
-            </div>
-          </div>
-
-          <div className="iv-insight-dots">
-            {INSIGHT_TABS.map((t, i) => (
-              <button key={t.id} className={"iv-insight-dot" + (i === insightIndex ? " active" : "")} onClick={() => goToInsight(t.id)} aria-label={"Go to " + t.label} />
-            ))}
-          </div>
-        </div>
 
       </PageFrame>
 

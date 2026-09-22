@@ -1,11 +1,12 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowUpRight, ArrowDownRight, Search } from "lucide-react";
+import { ArrowUpRight, ArrowDownRight, Search, ChevronRight, ChevronLeft as ChevronLeftIcon } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { formatMoney } from "@/lib/format";
 import PageFrame from "@/components/PageFrame";
 import TrendIndicator from "@/components/TrendIndicator";
+import FlashValue from "@/components/FlashValue";
 import Select from "@/components/Select";
 import SkeletonTableRow from "@/components/SkeletonTableRow";
 import {
@@ -16,10 +17,15 @@ import {
   fetchGlobalForex,
   fetchGlobalEtfs,
   fetchGlobalMutualFunds,
-  fetchGlobalStock
+  fetchGlobalStock,
+  fetchNgMovers,
+  fetchGlobalMovers,
 } from "@/lib/api";
-// NOTE: adjust the "@/lib/api" import above if your service layer file
-// lives at a different path (e.g. "@/lib/cam-api").
+
+const INSIGHT_TABS = [
+  { id: "gainers", label: "Top gainers", short: "Gainers" },
+  { id: "losers", label: "Top losers", short: "Losers" },
+];
 
 const REGIONS = ["Africa", "Global"];
 // countries available once "Africa" is picked as the region — add more as data is added for them
@@ -189,6 +195,24 @@ function mapSearchedStock(raw) {
   }];
 }
 
+function normalizeMoversArray(items = [], market) {
+  return items.map((item, idx) => {
+    const changePercentage = Number(String(item.change_percentage ?? item.changePct ?? item.change ?? item.percent_change ?? "0").replace(/[%,%]/g, ""));
+    const price = Number(item.current_price ?? item.last_price ?? item.price ?? 0);
+
+    return {
+      id: item.ticker || item.symbol || `mover-${idx}`,
+      ticker: item.ticker || item.symbol || `G-${idx}`,
+      name: item.company || item.name || item.ticker || item.symbol || "Global stock",
+      market,
+      price,
+      changePct: Number.isFinite(changePercentage) ? changePercentage : 0,
+      currency: item.currency
+    };
+  });
+}
+
+
 export default function MarketsPage() {
   const { region, setRegion, getAllLiveStocks, stocksLoading } = useStore();
   const router = useRouter();
@@ -212,6 +236,18 @@ export default function MarketsPage() {
   const [searchedStocks, setSearchedStocks] = useState(null);
   const [searchLoading, setSearchLoading] = useState(false);
 
+  const [insightTab, setInsightTab] = useState("gainers");
+  const [globalGainers, setGlobalGainers] = useState([]);
+  const [globalLosers, setGlobalLosers] = useState([]);
+  const [insightDir, setInsightDir] = useState("next");
+  const [marketMoversLoading, setMarketMoversLoading] = useState(true);
+
+  const insightIndex = INSIGHT_TABS.findIndex((t) => t.id === insightTab);
+  const touchX = useRef(null);
+  // Nigeria is the only African news source available, so Region: Africa always
+  // means the NG feed regardless of the Country sub-choice.
+  const isNg = region === "Africa";
+
   useEffect(() => {
     let cancelled = false;
 
@@ -233,6 +269,32 @@ export default function MarketsPage() {
       cancelled = true;
     };
   }, [region]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadMovers() {
+      setMarketMoversLoading(true);
+      setGlobalGainers([]);
+      setGlobalLosers([]);
+
+      const [moversResult] = await Promise.allSettled([
+        isNg ? fetchNgMovers() : fetchGlobalMovers(),
+      ]);
+
+      if (cancelled) return;
+
+      if (moversResult.status === "fulfilled") {
+        const moversPayload = moversResult.value;
+        setGlobalGainers(normalizeMoversArray(moversPayload?.top_gainers || [], isNg ? "NGX" : "Global"));
+        setGlobalLosers(normalizeMoversArray(moversPayload?.top_losers || [], isNg ? "NGX" : "Global"));
+      }
+      setMarketMoversLoading(false);
+    }
+
+    loadMovers();
+    return () => { cancelled = true; };
+  }, [isNg]);
 
   useEffect(() => {
     let cancelled = false;
@@ -288,6 +350,22 @@ export default function MarketsPage() {
       cancelled = true;
     };
   }, [submittedQuery, type, region]);
+
+  function goToInsight(id) {
+    const targetIndex = INSIGHT_TABS.findIndex((t) => t.id === id);
+    setInsightDir(targetIndex >= insightIndex ? "next" : "prev");
+    setInsightTab(id);
+  }
+  function insightNext() { setInsightDir("next"); setInsightTab(INSIGHT_TABS[(insightIndex + 1) % INSIGHT_TABS.length].id); }
+  function insightPrev() { setInsightDir("prev"); setInsightTab(INSIGHT_TABS[(insightIndex - 1 + INSIGHT_TABS.length) % INSIGHT_TABS.length].id); }
+  function onInsightTouchStart(e) { touchX.current = e.touches[0].clientX; }
+  function onInsightTouchEnd(e) {
+    if (touchX.current === null) return;
+    const delta = e.changedTouches[0].clientX - touchX.current;
+    if (delta < -40) insightNext();
+    else if (delta > 40) insightPrev();
+    touchX.current = null;
+  }
 
   const live = { indices, currencies, commodities, crypto, etfs, mutualFunds };
   const searched = { stocks: searchedStocks };
@@ -365,6 +443,10 @@ export default function MarketsPage() {
   const waitingOnSearch = isLiveSearchType(type, region) && Boolean(submittedQuery) && searchLoading;
   const showLoading = ((typeLoading[type] ?? false) || waitingOnSearch) && items.length === 0;
 
+  // Use real API data, fall back to live stocks if needed
+  const gainers = globalGainers.slice(0, 5)
+  const losers = globalLosers.slice(0, 5)
+
   return (
     <>
       <PageFrame>
@@ -391,6 +473,90 @@ export default function MarketsPage() {
           </div>
         </div>
 
+        {/* Market insights \u2014 movers / gainers / losers / calendar as a swipeable 3D card carousel */}
+        {type === "Stocks" && (
+          <div className="iv-panel iv-insight-panel">
+            <div className="iv-insight-head">
+              <div className="iv-news-tabs iv-home-news-tabs">
+                {INSIGHT_TABS.map((t) => (
+                  <button key={t.id} className={"iv-news-tab" + (insightTab === t.id ? " active" : "")} onClick={() => goToInsight(t.id)}>
+                    <span className="iv-tab-full">{t.label}</span>
+                    <span className="iv-tab-short">{t.short}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <button className="iv-insight-nav-btn edge left" onClick={insightPrev} aria-label="Previous"><ChevronLeftIcon size={17} /></button>
+            <button className="iv-insight-nav-btn edge right" onClick={insightNext} aria-label="Next"><ChevronRight size={17} /></button>
+
+            <div className="iv-insight-viewport" onTouchStart={onInsightTouchStart} onTouchEnd={onInsightTouchEnd}>
+              <div key={insightTab} className={"iv-insight-slide dir-" + insightDir}>
+
+
+
+                {insightTab === "gainers" && (
+                  <div className="iv-table-wrap"><table className="iv-table">
+                    <thead><tr><th>Stock</th><th>Change</th><th>Price</th></tr></thead>
+                    <tbody>
+                      {!marketMoversLoading && gainers.map((s) => (
+                        <tr key={s.id || s.ticker} onClick={() => router.push("/stock/" + s.ticker)} style={{ cursor: "pointer" }}>
+                          <td><span className="mono">{s.ticker}</span><span className="iv-sub"> {s.name}</span></td>
+                          <td className="mono iv-pos-text">+{s.changePct.toFixed(2)}%</td>
+                          <td className="mono"><FlashValue value={s.price} render={() => formatMoney(s.price, s.currency)} /></td>
+                        </tr>
+                      ))}
+                      {marketMoversLoading && gainers.length === 0 && (
+                        <>
+                          <SkeletonTableRow colCount={3} />
+                          <SkeletonTableRow colCount={3} />
+                          <SkeletonTableRow colCount={3} />
+                          <SkeletonTableRow colCount={3} />
+                        </>
+                      )}
+                      {!marketMoversLoading && gainers.length === 0 && (
+                        <tr><td colSpan={3} className="iv-empty-sm">No top gainers available right now.</td></tr>
+                      )}
+                    </tbody>
+                  </table></div>
+                )}
+
+                {insightTab === "losers" && (
+                  <div className="iv-table-wrap"><table className="iv-table">
+                    <thead><tr><th>Stock</th><th>Change</th><th>Price</th></tr></thead>
+                    <tbody>
+                      {!marketMoversLoading && losers.map((s) => (
+                        <tr key={s.id || s.ticker} onClick={() => router.push("/stock/" + s.ticker)} style={{ cursor: "pointer" }}>
+                          <td><span className="mono">{s.ticker}</span><span className="iv-sub"> {s.name}</span></td>
+                          <td className="mono iv-neg-text">{s.changePct.toFixed(2)}%</td>
+                          <td className="mono"><FlashValue value={s.price} render={() => formatMoney(s.price, s.currency)} /></td>
+                        </tr>
+                      ))}
+                      {marketMoversLoading && losers.length === 0 && (
+                        <>
+                          <SkeletonTableRow colCount={3} />
+                          <SkeletonTableRow colCount={3} />
+                          <SkeletonTableRow colCount={3} />
+                          <SkeletonTableRow colCount={3} />
+                        </>
+                      )}
+                      {!marketMoversLoading && losers.length === 0 && (
+                        <tr><td colSpan={3} className="iv-empty-sm">No top losers available right now.</td></tr>
+                      )}
+                    </tbody>
+                  </table></div>
+                )}
+
+              </div>
+            </div>
+
+            <div className="iv-insight-dots">
+              {INSIGHT_TABS.map((t, i) => (
+                <button key={t.id} className={"iv-insight-dot" + (i === insightIndex ? " active" : "")} onClick={() => goToInsight(t.id)} aria-label={"Go to " + t.label} />
+              ))}
+            </div>
+          </div>
+        )}
         <div className="iv-panel">
           <div className="iv-panel-head"><h3>{region === "Africa" && country !== "All" ? country : region} &middot; {type}</h3></div>
           <p className="iv-sub" style={{ marginBottom: 16 }}>
@@ -419,6 +585,7 @@ export default function MarketsPage() {
             </div>
           </div>
         </div>
+
 
         <div className="iv-panel">
           <div className="iv-table-wrap">

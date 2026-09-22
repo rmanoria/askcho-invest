@@ -11,7 +11,7 @@ export default function TickerTape() {
     return (
       <div className="iv-ticker">
         <div className="iv-ticker-track">
-          <span className="iv-ticker-item muted">Loading live prices\u2026</span>
+          <span className="iv-ticker-item muted">Loading live prices{"\u2026"}</span>
         </div>
       </div>
     );
