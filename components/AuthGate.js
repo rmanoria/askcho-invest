@@ -1,7 +1,7 @@
 "use client";
 import { createContext, useContext, useState } from "react";
 import { useRouter } from "next/navigation";
-import { X, Lock } from "lucide-react";
+import { X, Lock, BellRing, Sparkles, Star } from "lucide-react";
 import { useStore } from "@/lib/store";
 
 const AuthGateContext = createContext(null);
@@ -41,9 +41,20 @@ export function AuthGateProvider({ children }) {
               <h3>Log in required</h3>
               <Lock size={16} className="muted" style={{ flexShrink: 0 }} />
             </div>
-            <p className="iv-sub" style={{ marginBottom: 22 }}>
-              You'll need to log in or create a free account to use this feature.
-            </p>
+            <div className="iv-auth-features">
+              <div className="iv-auth-feature">
+                <BellRing size={16} aria-hidden="true" />
+                <span>Get notified when prices move</span>
+              </div>
+              <div className="iv-auth-feature">
+                <Star size={16} aria-hidden="true" />
+                <span>Track favorite stocks in one place</span>
+              </div>
+              <div className="iv-auth-feature">
+                <Sparkles size={16} aria-hidden="true" />
+                <span>Get AI context for market decisions</span>
+              </div>
+            </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               <button
                 className="iv-btn-primary full"
@@ -62,9 +73,6 @@ export function AuthGateProvider({ children }) {
                 }}
               >
                 Create account
-              </button>
-              <button className="iv-btn-ghost full" onClick={close}>
-                Cancel
               </button>
             </div>
           </div>

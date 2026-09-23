@@ -1,19 +1,34 @@
 "use client";
 import { useState } from "react";
 import { AreaChart, Area, ResponsiveContainer, XAxis, YAxis, Tooltip, CartesianGrid, Brush } from "recharts";
-import { formatMoney } from "@/lib/format";
+import { formatDate, formatMoney } from "@/lib/format";
 
 function ChartTooltip({ active, payload, currency }) {
   if (!active || !payload || !payload.length) return null;
-  return <div className="iv-chart-tip">{formatMoney(payload[0].value, currency || "NGN")}</div>;
+  const point = payload[0].payload;
+  return (
+    <div className="iv-chart-tip">
+      <div className="iv-chart-tip-date">{formatDate(point.timestamp)}</div>
+      <div>{formatMoney(point.price, currency || "NGN")}</div>
+    </div>
+  );
 }
 
-export default function PriceChart({ history, positive, height = 240, currency }) {
-  const [period, setPeriod] = useState("1M");
+const PERIODS = [
+  { label: "1W", value: "7d" },
+  { label: "1M", value: "30d" },
+  { label: "3M", value: "90d" },
+  { label: "1Y", value: "1y" },
+  { label: "5Y", value: "5y" },
+  { label: "ALL", value: "all" }
+];
+
+export default function PriceChart({ history, positive, height = 240, currency, loading, error, period = "30d", onPeriodChange }) {
   const [hover, setHover] = useState(null);
-  if (!history || history.length === 0) return <p className="iv-empty-sm">{/**"Historical prices are not available yet"**/}.</p>;
-  const slices = { "1W": 7, "1M": 30, "3M": 90, ALL: history.length };
-  const data = history.slice(-slices[period]);
+  if (loading && (!history || history.length === 0)) return <p className="iv-empty-sm">Loading price history...</p>;
+  if (error && (!history || history.length === 0)) return <p className="iv-empty-sm">Price history is unavailable right now.</p>;
+  if (!history || history.length === 0) return <p className="iv-empty-sm">Historical prices are not available yet.</p>;
+  const data = history;
   const color = positive ? "#34d399" : "#fb7185";
   const gradId = "grad-" + color.replace("#", "");
 
@@ -21,18 +36,18 @@ export default function PriceChart({ history, positive, height = 240, currency }
     <div>
       <div className="iv-chart-head">
         <div className="iv-period-tabs">
-          {Object.keys(slices).map((p) => (
+          {PERIODS.map(({ label, value }) => (
             <button
-              key={p}
-              className={"iv-period-tab" + (period === p ? " active" : "")}
-              onClick={() => { setPeriod(p); setHover(null); }}
+              key={value}
+              className={"iv-period-tab" + (period === value ? " active" : "")}
+              onClick={() => { setHover(null); onPeriodChange?.(value); }}
             >
-              {p}
+              {label}
             </button>
           ))}
         </div>
         <div className="iv-crosshair-readout mono">
-          {hover ? formatMoney(hover.price, currency) : "Drag chart edges to zoom"}
+          {hover ? formatDate(hover.timestamp) + " · " + formatMoney(hover.price, currency) : loading ? "Updating history..." : "Drag chart edges to zoom"}
         </div>
       </div>
       <ResponsiveContainer width="100%" height={height}>

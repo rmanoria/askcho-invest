@@ -179,13 +179,22 @@ export default function DashboardPage() {
         {/* Featured hero + news list */}
         <div className="iv-panel iv-home-news-panel">
           <div className="iv-home-news-head">
-            <div className="iv-news-tabs iv-home-news-tabs">
+            <div className="iv-dashboard-category-tabs iv-news-tabs iv-home-news-tabs">
               {(region === "Africa" ? NIGERIA_NEWS_TABS : GLOBAL_NEWS_TABS).map((t) => (
                 <button key={t.id} className={"iv-news-tab" + (newsTab === t.id ? " active" : "")} onClick={() => setNewsTab(t.id)}>
                   <span className="iv-tab-full">{t.label}</span>
                   <span className="iv-tab-short">{t.short}</span>
                 </button>
               ))}
+            </div>
+            <div className="iv-dashboard-category-select">
+              <Select
+                compact
+                label="Category"
+                value={newsTab}
+                onChange={setNewsTab}
+                options={(region === "Africa" ? NIGERIA_NEWS_TABS : GLOBAL_NEWS_TABS).map((t) => ({ value: t.id, label: t.label }))}
+              />
             </div>
           </div>
 

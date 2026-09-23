@@ -4,8 +4,8 @@ import { useParams, useRouter } from "next/navigation";
 import { ArrowLeft, ArrowUpRight, ArrowDownRight, Star, Newspaper, BellRing, ExternalLink } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { getNgNews } from "@/lib/news";
-import { fetchGlobalCompanyNews, fetchGlobalStock } from "@/lib/api";
-import { formatMoney } from "@/lib/format";
+import { fetchGlobalCompanyNews, fetchGlobalStock, fetchNgCompanyChart, fetchNgCompanyProfile } from "@/lib/api";
+import { formatLargeAmount, formatMoney, formatShares } from "@/lib/format";
 import PageFrame from "@/components/PageFrame";
 import PriceChart from "@/components/PriceChart";
 import Stat from "@/components/Stat";
@@ -25,9 +25,64 @@ export default function StockPage() {
   const [resolvedStock, setResolvedStock] = useState(null);
   const [fallbackLoading, setFallbackLoading] = useState(false);
   const [fallbackError, setFallbackError] = useState(false);
+  const [chartPeriod, setChartPeriod] = useState("30d");
+  const [chartHistory, setChartHistory] = useState([]);
+  const [chartLoading, setChartLoading] = useState(false);
+  const [chartError, setChartError] = useState(false);
+  const [companyProfile, setCompanyProfile] = useState(null);
+  const [profileLoading, setProfileLoading] = useState(false);
+  const [profileError, setProfileError] = useState(false);
+  const [logoError, setLogoError] = useState(false);
 
   const tickerKey = String(ticker).toUpperCase();
   const liveStock = getLiveStock(tickerKey);
+  const market = liveStock?.market || resolvedStock?.market;
+
+  useEffect(() => {
+    setChartPeriod("30d");
+    setChartHistory([]);
+    setChartError(false);
+    setCompanyProfile(null);
+    setProfileError(false);
+    setLogoError(false);
+  }, [tickerKey]);
+
+  useEffect(() => {
+    if (market !== "NGX") return undefined;
+    let cancelled = false;
+    setChartLoading(true);
+    setChartError(false);
+    fetchNgCompanyChart(tickerKey, { period: chartPeriod })
+      .then((payload) => {
+        if (cancelled) return;
+        if (payload?.error) throw new Error(payload.error);
+        setChartHistory(payload?.data || []);
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setChartHistory([]);
+          setChartError(true);
+        }
+      })
+      .finally(() => { if (!cancelled) setChartLoading(false); });
+    return () => { cancelled = true; };
+  }, [tickerKey, market, chartPeriod]);
+
+  useEffect(() => {
+    if (market !== "NGX") return undefined;
+    let cancelled = false;
+    setProfileLoading(true);
+    setProfileError(false);
+    fetchNgCompanyProfile(tickerKey)
+      .then((payload) => {
+        if (cancelled) return;
+        if (payload?.error) throw new Error(payload.error);
+        setCompanyProfile(payload || null);
+      })
+      .catch(() => { if (!cancelled) setProfileError(true); })
+      .finally(() => { if (!cancelled) setProfileLoading(false); });
+    return () => { cancelled = true; };
+  }, [tickerKey, market]);
 
   useEffect(() => {
     let cancelled = false;
@@ -88,6 +143,21 @@ export default function StockPage() {
 
   const watched = state.watchlist.includes(s.ticker);
   const hasOHLC = s.dayHigh !== null && s.dayLow !== null;
+  const displayName = companyProfile?.name || s.name;
+  const displaySector = companyProfile?.sector || s.sector;
+  const profileStats = [
+    ["Market cap", companyProfile?.market_cap == null ? null : formatLargeAmount(companyProfile.market_cap, s.currency)],
+    ["52-week high", companyProfile?.high_52wk == null ? null : formatMoney(companyProfile.high_52wk, s.currency)],
+    ["52-week low", companyProfile?.low_52wk == null ? null : formatMoney(companyProfile.low_52wk, s.currency)],
+    ["EPS", companyProfile?.ttm_eps == null ? null : formatMoney(companyProfile.ttm_eps, s.currency)],
+    ["Price/Book (P/B)", companyProfile?.pb_ratio == null ? null : Number(companyProfile.pb_ratio).toFixed(2)],
+    ["Dividend yield", companyProfile?.dividend_yield == null ? null : Number(companyProfile.dividend_yield).toFixed(2) + "%"],
+    ["Shares outstanding", companyProfile?.shares_outstanding == null ? null : formatLargeAmount(companyProfile.shares_outstanding).toLocaleString()],
+    ["Trading volume", companyProfile?.volume == null ? null : Number(companyProfile.volume).toLocaleString()],
+    ["Value traded", companyProfile?.value_traded == null ? null : formatLargeAmount(companyProfile.value_traded, s.currency)],
+    ["Debt / equity", companyProfile?.debt_to_equity == null ? null : Number(companyProfile.debt_to_equity).toFixed(2)],
+    ["Current ratio", companyProfile?.current_ratio == null ? null : Number(companyProfile.current_ratio).toFixed(2)],
+  ].filter(([, value]) => value != null);
 
   function submitAlert(e) {
     e.preventDefault();
@@ -110,10 +180,23 @@ export default function StockPage() {
           <div>
             <div className="iv-panel">
               <div className="iv-panel-head">
-                <div>
-                  <MarketBadge market={s.market} />
-                  <h2 style={{ marginTop: 8 }}>{s.name}</h2>
-                  <span className="mono muted">{s.ticker} &middot; {s.sector}</span>
+                <div className="iv-company-heading">
+                  <div className="iv-company-logo" aria-hidden="true">
+                    {companyProfile?.logo_url && !logoError ? (
+                      <img
+                        src={companyProfile.logo_url}
+                        alt=""
+                        onError={() => setLogoError(true)}
+                      />
+                    ) : (
+                      s.ticker.slice(0, 2)
+                    )}
+                  </div>
+                  <div>
+                    <MarketBadge market={s.market} />
+                    <h2 style={{ marginTop: 8 }}>{displayName}</h2>
+                    <span className="mono muted">{s.ticker} &middot; {displaySector}</span>
+                  </div>
                 </div>
                 <button className="iv-star-btn lg" onClick={() => requireAuth(() => toggleWatch(s.ticker))} aria-label="Toggle watchlist">
                   <Star size={18} fill={watched ? "#ffffff" : "none"} />
@@ -126,7 +209,16 @@ export default function StockPage() {
                   {Math.abs(s.changePct).toFixed(2)}%
                 </span>
               </div>
-              <PriceChart history={s.history} positive={s.changePct >= 0} currency={s.currency} height={220} />
+              <PriceChart
+                history={s.market === "NGX" ? chartHistory : s.history}
+                positive={s.changePct >= 0}
+                currency={s.currency}
+                height={220}
+                period={chartPeriod}
+                loading={s.market === "NGX" && chartLoading}
+                error={s.market === "NGX" && chartError}
+                onPeriodChange={s.market === "NGX" ? setChartPeriod : undefined}
+              />
 
               <div className="iv-stat-strip small">
                 <Stat label="Prev close" value={formatMoney(s.prevClose, s.currency)} />
@@ -135,6 +227,8 @@ export default function StockPage() {
                 {hasOHLC && <Stat label="Open" value={formatMoney(s.openPrice, s.currency)} />}
               </div>
             </div>
+
+
 
             <div className="iv-panel">
               <div className="iv-panel-head"><h3>Market news</h3><Newspaper size={16} className="muted" /></div>
@@ -152,6 +246,25 @@ export default function StockPage() {
           </div>
 
           <div className="iv-col-stack">
+            {s.market === "NGX" && (
+              <div className="iv-panel">
+                <div className="iv-panel-head"><h3>Company profile</h3></div>
+                {profileLoading && <p className="iv-empty-sm">Loading company profile...</p>}
+                {!profileLoading && profileError && <p className="iv-empty-sm">Company profile is unavailable right now.</p>}
+                {!profileLoading && !profileError && companyProfile && (
+                  <>
+                    {(companyProfile.sub_sector || companyProfile.market_classification || companyProfile.nature_of_business) && (
+                      <p className="iv-sub" style={{ marginTop: 14 }}>
+                        {[companyProfile.sub_sector, companyProfile.market_classification, companyProfile.nature_of_business].filter(Boolean).join(" · ")}
+                      </p>
+                    )}
+                    {profileStats.length > 0 && <div className="iv-stat-strip small iv-profile-stats">{profileStats.map(([label, value]) => <Stat key={label} label={label} value={value} />)}</div>}
+
+                  </>
+                )}
+              </div>
+            )}
+
             <div className="iv-panel">
               <div className="iv-panel-head"><h3>Price alert</h3><BellRing size={16} className="muted" /></div>
               <form onSubmit={submitAlert}>
