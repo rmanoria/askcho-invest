@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { Search as SearchIcon, Star, Newspaper, ExternalLink } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { MARKETS } from "@/lib/stocks";
-import { getGlobalNews, hoursAgo } from "@/lib/news";
+import { getGlobalNews, relativeTime } from "@/lib/news";
 import { formatMoney } from "@/lib/format";
 import PageFrame from "@/components/PageFrame";
 import MarketBadge from "@/components/MarketBadge";
@@ -59,7 +59,7 @@ export default function SearchPage() {
                   {n.image && <div className="iv-news-thumb" style={{ backgroundImage: "url(" + n.image + ")" }} />}
                   <div className="iv-news-row-body">
                     <div className="iv-news-headline">{n.headline}</div>
-                    <div className="iv-sub">{n.source} &middot; {hoursAgo(n.datetime)}h ago</div>
+                    <div className="iv-sub">{n.source} &middot; {relativeTime(n.datetime)} ago</div>
                   </div>
                   <ExternalLink size={14} className="muted" />
                 </a>

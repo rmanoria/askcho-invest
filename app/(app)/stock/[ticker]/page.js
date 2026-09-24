@@ -1,10 +1,10 @@
 "use client";
 import { useState, useEffect } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft, ArrowUpRight, ArrowDownRight, Star, Newspaper, BellRing, ExternalLink } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { getNgNews } from "@/lib/news";
-import { fetchGlobalCompanyNews, fetchGlobalStock, fetchNgCompanyChart, fetchNgCompanyProfile } from "@/lib/api";
+import { fetchGlobalCompanyNews, fetchGlobalStock, fetchNgCompanyChart, fetchNgCompanyProfile, fetchNgForexChart, fetchNgForexRates, fetchNgIndexChart, fetchNgIndices } from "@/lib/api";
 import { formatLargeAmount, formatMoney, formatShares } from "@/lib/format";
 import PageFrame from "@/components/PageFrame";
 import PriceChart from "@/components/PriceChart";
@@ -17,12 +17,14 @@ import { useAuthGate } from "@/components/AuthGate";
 export default function StockPage() {
   const { ticker } = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { state, getLiveStock, toggleWatch, addAlert, stocksLoading } = useStore();
   const { requireAuth } = useAuthGate();
   const [alertPrice, setAlertPrice] = useState("");
   const [alertCondition, setAlertCondition] = useState("above");
   const [marketNews, setMarketNews] = useState([]);
   const [resolvedStock, setResolvedStock] = useState(null);
+  const [resolvedInstrument, setResolvedInstrument] = useState(null);
   const [fallbackLoading, setFallbackLoading] = useState(false);
   const [fallbackError, setFallbackError] = useState(false);
   const [chartPeriod, setChartPeriod] = useState("30d");
@@ -33,22 +35,34 @@ export default function StockPage() {
   const [profileLoading, setProfileLoading] = useState(false);
   const [profileError, setProfileError] = useState(false);
   const [logoError, setLogoError] = useState(false);
+  const [activeTab, setActiveTab] = useState("summary");
+  const [canGoBack, setCanGoBack] = useState(false);
 
   const tickerKey = String(ticker).toUpperCase();
+  const requestedAsset = searchParams.get("asset") || "stock";
   const liveStock = getLiveStock(tickerKey);
-  const market = liveStock?.market || resolvedStock?.market;
+  const detailAsset = liveStock?.assetType || resolvedInstrument?.assetType || resolvedStock?.assetType || requestedAsset;
+  const market = liveStock?.market || resolvedInstrument?.market || resolvedStock?.market;
+  const isCompany = detailAsset === "stock";
 
   useEffect(() => {
     setChartPeriod("30d");
     setChartHistory([]);
     setChartError(false);
     setCompanyProfile(null);
+    setResolvedInstrument(null);
     setProfileError(false);
     setLogoError(false);
+    setActiveTab("summary");
   }, [tickerKey]);
 
   useEffect(() => {
-    if (market !== "NGX") return undefined;
+    if (typeof window === "undefined") return;
+    setCanGoBack(window.history.length > 1 && document.referrer.startsWith(window.location.origin));
+  }, []);
+
+  useEffect(() => {
+    if (!isCompany || market !== "NGX") return undefined;
     let cancelled = false;
     setChartLoading(true);
     setChartError(false);
@@ -66,10 +80,31 @@ export default function StockPage() {
       })
       .finally(() => { if (!cancelled) setChartLoading(false); });
     return () => { cancelled = true; };
-  }, [tickerKey, market, chartPeriod]);
+  }, [tickerKey, market, chartPeriod, isCompany]);
 
   useEffect(() => {
-    if (market !== "NGX") return undefined;
+    if (isCompany) return undefined;
+    let cancelled = false;
+    setChartLoading(true);
+    setChartError(false);
+    const loader = detailAsset === "ng_index"
+      ? fetchNgIndexChart(tickerKey, { period: chartPeriod })
+      : fetchNgForexChart(tickerKey, "NGN", { period: chartPeriod });
+    loader.then((payload) => {
+      if (cancelled) return;
+      if (payload?.error) throw new Error(payload.error);
+      setChartHistory(payload?.data || []);
+    }).catch(() => {
+      if (!cancelled) {
+        setChartHistory([]);
+        setChartError(true);
+      }
+    }).finally(() => { if (!cancelled) setChartLoading(false); });
+    return () => { cancelled = true; };
+  }, [tickerKey, detailAsset, chartPeriod, isCompany]);
+
+  useEffect(() => {
+    if (!isCompany || market !== "NGX") return undefined;
     let cancelled = false;
     setProfileLoading(true);
     setProfileError(false);
@@ -82,13 +117,65 @@ export default function StockPage() {
       .catch(() => { if (!cancelled) setProfileError(true); })
       .finally(() => { if (!cancelled) setProfileLoading(false); });
     return () => { cancelled = true; };
-  }, [tickerKey, market]);
+  }, [tickerKey, market, isCompany]);
 
   useEffect(() => {
     let cancelled = false;
     setResolvedStock(null);
+    setResolvedInstrument(null);
     setFallbackError(false);
-    if (liveStock || stocksLoading) return undefined;
+    if (liveStock || (isCompany && stocksLoading)) return undefined;
+
+    if (detailAsset === "ng_index") {
+      fetchNgIndices().then((payload) => {
+        if (cancelled) return;
+        const item = (Array.isArray(payload) ? payload : payload?.data || []).find((entry) => String(entry.symbol || "").toUpperCase() === tickerKey);
+        if (!item) throw new Error("Index not found");
+        setResolvedInstrument({
+          ticker: item.symbol || tickerKey,
+          name: item.index_name || item.name || tickerKey,
+          sector: "Nigerian index",
+          market: "NGX",
+          currency: "NGN",
+          assetType: "ng_index",
+          price: Number(item.current_value ?? item.value ?? 0),
+          changePct: Number(item.price_change_percent ?? 0),
+          change: Number(item.price_change ?? 0),
+          prevClose: Number(item.prev_close ?? 0),
+          dayHigh: null,
+          dayLow: null,
+          openPrice: null,
+          history: []
+        });
+      }).catch(() => { if (!cancelled) setFallbackError(true); });
+      return () => { cancelled = true; };
+    }
+
+    if (detailAsset === "ng_forex") {
+      fetchNgForexRates().then((payload) => {
+        if (cancelled) return;
+        const rates = Array.isArray(payload) ? payload : payload?.rates || [];
+        const item = rates.find((entry) => String(entry.currency || "").toUpperCase() === tickerKey);
+        if (!item) throw new Error("Forex pair not found");
+        setResolvedInstrument({
+          ticker: `${tickerKey}/NGN`,
+          name: `${tickerKey}/NGN`,
+          sector: "Nigerian forex market",
+          market: "NG Forex",
+          currency: "NGN",
+          assetType: "ng_forex",
+          price: Number(item.rate),
+          changePct: Number(item.daily_change_percent ?? 0),
+          change: Number(item.daily_change ?? 0),
+          prevClose: Number(item.rate) - Number(item.daily_change ?? 0),
+          dayHigh: null,
+          dayLow: null,
+          openPrice: null,
+          history: []
+        });
+      }).catch(() => { if (!cancelled) setFallbackError(true); });
+      return () => { cancelled = true; };
+    }
 
     setFallbackLoading(true);
     fetchGlobalStock(tickerKey)
@@ -115,10 +202,13 @@ export default function StockPage() {
       .finally(() => { if (!cancelled) setFallbackLoading(false); });
 
     return () => { cancelled = true; };
-  }, [tickerKey, liveStock, stocksLoading]);
+  }, [tickerKey, liveStock, stocksLoading, detailAsset, isCompany]);
 
   useEffect(() => {
-    if (!liveStock && !resolvedStock) return;
+    if (!isCompany || (!liveStock && !resolvedStock)) {
+      setMarketNews([]);
+      return undefined;
+    }
     const loader = (liveStock?.market || resolvedStock?.market) === "NGX"
       ? getNgNews("corporate-news")
       : fetchGlobalCompanyNews(tickerKey).then((items) => items.map((item, index) => ({
@@ -127,9 +217,9 @@ export default function StockPage() {
         datetime: item.datetime ? item.datetime * 1000 : null
       })));
     loader.then(setMarketNews).catch(() => setMarketNews([]));
-  }, [tickerKey, liveStock, resolvedStock]);
+  }, [tickerKey, liveStock, resolvedStock, isCompany]);
 
-  const s = liveStock || resolvedStock;
+  const s = liveStock || resolvedInstrument || resolvedStock;
 
   if (!s) {
     return (
@@ -143,6 +233,7 @@ export default function StockPage() {
 
   const watched = state.watchlist.includes(s.ticker);
   const hasOHLC = s.dayHigh !== null && s.dayLow !== null;
+  const usesRemoteChart = !isCompany || s.market === "NGX";
   const displayName = companyProfile?.name || s.name;
   const displaySector = companyProfile?.sector || s.sector;
   const profileStats = [
@@ -169,16 +260,22 @@ export default function StockPage() {
     });
   }
 
+  function handleBack() {
+    if (canGoBack) router.back();
+    else router.push("/markets");
+  }
+
   return (
     <>
       <PageFrame title={s.ticker}>
-        <button className="iv-btn-ghost sm" onClick={() => router.back()} style={{ marginBottom: 16 }}>
+        <button className="iv-btn-ghost sm" onClick={handleBack} style={{ marginBottom: 16 }}>
           <ArrowLeft size={14} /> Back
         </button>
 
-        <div className="iv-grid-2">
+
+        <div className={"iv-grid-2 iv-stock-tab-content tab-" + activeTab}>
           <div>
-            <div className="iv-panel">
+            <div className="iv-panel iv-stock-summary-panel">
               <div className="iv-panel-head">
                 <div className="iv-company-heading">
                   <div className="iv-company-logo" aria-hidden="true">
@@ -198,9 +295,11 @@ export default function StockPage() {
                     <span className="mono muted">{s.ticker} &middot; {displaySector}</span>
                   </div>
                 </div>
-                <button className="iv-star-btn lg" onClick={() => requireAuth(() => toggleWatch(s.ticker))} aria-label="Toggle watchlist">
-                  <Star size={18} fill={watched ? "#ffffff" : "none"} />
-                </button>
+                {isCompany && (
+                  <button className="iv-star-btn lg" onClick={() => requireAuth(() => toggleWatch(s.ticker))} aria-label="Toggle watchlist">
+                    <Star size={18} fill={watched ? "#ffffff" : "none"} />
+                  </button>
+                )}
               </div>
               <div className="iv-price-row lg">
                 <span className="iv-price mono"><FlashValue value={s.price} render={() => formatMoney(s.price, s.currency)} /></span>
@@ -210,14 +309,14 @@ export default function StockPage() {
                 </span>
               </div>
               <PriceChart
-                history={s.market === "NGX" ? chartHistory : s.history}
+                history={usesRemoteChart ? chartHistory : s.history}
                 positive={s.changePct >= 0}
                 currency={s.currency}
                 height={220}
                 period={chartPeriod}
-                loading={s.market === "NGX" && chartLoading}
-                error={s.market === "NGX" && chartError}
-                onPeriodChange={s.market === "NGX" ? setChartPeriod : undefined}
+                loading={usesRemoteChart && chartLoading}
+                error={usesRemoteChart && chartError}
+                onPeriodChange={usesRemoteChart ? setChartPeriod : undefined}
               />
 
               <div className="iv-stat-strip small">
@@ -228,11 +327,9 @@ export default function StockPage() {
               </div>
             </div>
 
-
-
-            <div className="iv-panel">
+            {isCompany && <div className="iv-panel iv-stock-news-panel">
               <div className="iv-panel-head"><h3>Market news</h3><Newspaper size={16} className="muted" /></div>
-              <p className="iv-sub" style={{ marginBottom: 10 }}>{s.market === "NGX" ? "Nigerian company news." : "Company news."}</p>
+              <p className="iv-sub" style={{ marginBottom: 10 }}>{isCompany ? (s.market === "NGX" ? "Nigerian company news." : "Company news.") : "News is not available for this market instrument yet."}</p>
               <div className="iv-notif-list">
                 {marketNews.slice(0, 5).map((n) => (
                   <a key={n.id} className="iv-notif-item" href={n.url} style={{ display: "block" }} target="_blank" rel="noopener noreferrer">
@@ -242,30 +339,30 @@ export default function StockPage() {
                 ))}
                 {marketNews.length === 0 && <p className="iv-empty-sm">No market news available right now.</p>}
               </div>
-            </div>
+            </div>}
           </div>
 
           <div className="iv-col-stack">
-            {s.market === "NGX" && (
-              <div className="iv-panel">
-                <div className="iv-panel-head"><h3>Company profile</h3></div>
-                {profileLoading && <p className="iv-empty-sm">Loading company profile...</p>}
-                {!profileLoading && profileError && <p className="iv-empty-sm">Company profile is unavailable right now.</p>}
-                {!profileLoading && !profileError && companyProfile && (
-                  <>
-                    {(companyProfile.sub_sector || companyProfile.market_classification || companyProfile.nature_of_business) && (
-                      <p className="iv-sub" style={{ marginTop: 14 }}>
-                        {[companyProfile.sub_sector, companyProfile.market_classification, companyProfile.nature_of_business].filter(Boolean).join(" · ")}
-                      </p>
-                    )}
-                    {profileStats.length > 0 && <div className="iv-stat-strip small iv-profile-stats">{profileStats.map(([label, value]) => <Stat key={label} label={label} value={value} />)}</div>}
+            {isCompany && <div className="iv-panel iv-stock-profile-panel">
+              <div className="iv-panel-head"><h3>{isCompany ? "Company profile" : "Market instrument"}</h3></div>
+              {!isCompany && <p className="iv-empty-sm">{s.name} is a chartable market instrument. Company profile data is not applicable.</p>}
+              {isCompany && profileLoading && <p className="iv-empty-sm">Loading company profile...</p>}
+              {isCompany && !profileLoading && profileError && <p className="iv-empty-sm">Company profile is unavailable right now.</p>}
+              {isCompany && !profileLoading && !profileError && s.market !== "NGX" && <p className="iv-empty-sm">Company profile is unavailable for this market.</p>}
+              {isCompany && !profileLoading && !profileError && s.market === "NGX" && companyProfile && (
+                <>
+                  {(companyProfile.sub_sector || companyProfile.market_classification || companyProfile.nature_of_business) && (
+                    <p className="iv-sub" style={{ marginTop: 14 }}>
+                      {[companyProfile.sub_sector, companyProfile.market_classification, companyProfile.nature_of_business].filter(Boolean).join(" · ")}
+                    </p>
+                  )}
+                  {profileStats.length > 0 && <div className="iv-stat-strip small iv-profile-stats">{profileStats.map(([label, value]) => <Stat key={label} label={label} value={value} />)}</div>}
 
-                  </>
-                )}
-              </div>
-            )}
+                </>
+              )}
+            </div>}
 
-            <div className="iv-panel">
+            {isCompany && <div className="iv-panel iv-stock-summary-panel">
               <div className="iv-panel-head"><h3>Price alert</h3><BellRing size={16} className="muted" /></div>
               <form onSubmit={submitAlert}>
                 <div className="iv-form-row">
@@ -284,11 +381,13 @@ export default function StockPage() {
                 </div>
                 <button type="submit" className="iv-btn-primary full">Set alert</button>
               </form>
-            </div>
+            </div>}
 
-            <button className={"iv-btn-ghost full" + (watched ? "" : "")} onClick={() => requireAuth(() => toggleWatch(s.ticker))} style={{ marginTop: 0 }}>
-              <Star size={15} fill={watched ? "#ffffff" : "none"} /> {watched ? "Remove from watchlist" : "Add to watchlist"}
-            </button>
+            {isCompany && (
+              <button className="iv-btn-ghost full iv-stock-summary-panel" onClick={() => requireAuth(() => toggleWatch(s.ticker))} style={{ marginTop: 0 }}>
+                <Star size={15} fill={watched ? "#ffffff" : "none"} /> {watched ? "Remove from watchlist" : "Add to watchlist"}
+              </button>
+            )}
           </div>
         </div>
       </PageFrame>

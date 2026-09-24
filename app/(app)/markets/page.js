@@ -5,7 +5,7 @@ import { ArrowUpRight, ArrowDownRight, Search, ChevronRight, ChevronLeft as Chev
 import { useStore } from "@/lib/store";
 import { formatMoney } from "@/lib/format";
 import PageFrame from "@/components/PageFrame";
-import TrendIndicator from "@/components/TrendIndicator";
+import Sparkline from "@/components/Sparkline";
 import FlashValue from "@/components/FlashValue";
 import Select from "@/components/Select";
 import SkeletonTableRow from "@/components/SkeletonTableRow";
@@ -18,6 +18,10 @@ import {
   fetchGlobalEtfs,
   fetchGlobalMutualFunds,
   fetchGlobalStock,
+  fetchNgForexRates,
+  fetchNgCompanyChart,
+  fetchNgIndexChart,
+  fetchNgForexChart,
   fetchNgMovers,
   fetchGlobalMovers,
 } from "@/lib/api";
@@ -73,7 +77,7 @@ function getInstruments(region, type, stocks, live, searched, query) {
     return stocks.filter((s) => (REGION_MARKETS[region] || []).includes(s.market)).filter((item) => matchesQuery(item, query));
   }
   if (type === "Currencies") {
-    const base = region === "Africa" ? live.currencies.filter((c) => c.ticker?.includes("NGN")) : live.currencies;
+    const base = region === "Africa" ? live.ngCurrencies : live.currencies;
     return base.filter((item) => matchesQuery(item, query));
   }
   if (type === "Commodities") return live.commodities.filter((item) => matchesQuery(item, query));
@@ -108,8 +112,26 @@ function mapNgIndices(raw) {
     name: item.name || item.index_name || item.symbol || item.Symbol || "—",
     ticker: item.symbol || item.Symbol,
     value: Number(item.value ?? item.current_value ?? item.Value ?? 0),
-    changePct: Number(item.percent_change ?? item.changePct ?? item.PercChange ?? 0),
-    region: "Africa"
+    changePct: Number(item.percent_change ?? item.price_change_percent ?? item.changePct ?? item.PercChange ?? 0),
+    region: "Africa",
+    market: "NGX",
+    assetType: "ng_index"
+  }));
+}
+
+function mapNgForex(raw) {
+  const rates = Array.isArray(raw) ? raw : raw?.rates;
+  if (!Array.isArray(rates)) return [];
+  return rates.filter((item) => item?.currency && item.rate != null).map((item) => ({
+    ticker: `${item.currency}/NGN`,
+    name: `${item.currency}/NGN`,
+    source: item.currency,
+    target: "NGN",
+    price: Number(item.rate),
+    changePct: Number(item.daily_change_percent ?? 0),
+    currency: "NGN",
+    market: "NG Forex",
+    assetType: "ng_forex"
   }));
 }
 
@@ -212,16 +234,32 @@ function normalizeMoversArray(items = [], market) {
   });
 }
 
+function readMarketView() {
+  if (typeof window === "undefined") return null;
+  const params = new URLSearchParams(window.location.search);
+  const nextRegion = REGIONS.includes(params.get("region")) ? params.get("region") : "Africa";
+  const nextTypes = getInstrumentTypes(nextRegion);
+  const nextType = nextTypes.includes(params.get("type")) ? params.get("type") : "Stocks";
+  const nextCountry = nextRegion === "Africa" && AFRICA_COUNTRIES.includes(params.get("country"))
+    ? params.get("country")
+    : nextRegion === "Africa" ? "Nigeria" : "All";
+  const nextSort = SORTS.some((option) => option.value === params.get("sort")) ? params.get("sort") : "default";
+  const nextPage = Math.max(1, Number.parseInt(params.get("page") || "1", 10) || 1);
+  const nextQuery = params.get("q") || "";
+  return { region: nextRegion, country: nextCountry, type: nextType, sort: nextSort, page: nextPage, query: nextQuery };
+}
+
 
 export default function MarketsPage() {
   const { region, setRegion, getAllLiveStocks, stocksLoading } = useStore();
   const router = useRouter();
   const [country, setCountry] = useState("Nigeria");
-  const [type, setType] = useState("Indices");
+  const [type, setType] = useState("Stocks");
   const [sort, setSort] = useState("default");
   const [page, setPage] = useState(1);
   const [query, setQuery] = useState("");
   const [submittedQuery, setSubmittedQuery] = useState("");
+  const urlHydrated = useRef(false);
 
   const [indices, setIndices] = useState([]);
   const [indicesLoading, setIndicesLoading] = useState(true);
@@ -229,6 +267,8 @@ export default function MarketsPage() {
   const [commodities, setCommodities] = useState([]);
   const [crypto, setCrypto] = useState([]);
   const [currencies, setCurrencies] = useState([]);
+  const [ngCurrencies, setNgCurrencies] = useState([]);
+  const [ngForexLoading, setNgForexLoading] = useState(false);
   const [etfs, setEtfs] = useState([]);
   const [mutualFunds, setMutualFunds] = useState([]);
   const [globalLoading, setGlobalLoading] = useState(true);
@@ -241,9 +281,37 @@ export default function MarketsPage() {
   const [globalLosers, setGlobalLosers] = useState([]);
   const [insightDir, setInsightDir] = useState("next");
   const [marketMoversLoading, setMarketMoversLoading] = useState(true);
+  const [previewHistory, setPreviewHistory] = useState({});
 
   const insightIndex = INSIGHT_TABS.findIndex((t) => t.id === insightTab);
   const touchX = useRef(null);
+
+  useEffect(() => {
+    const savedView = readMarketView();
+    if (savedView) {
+      setRegion(savedView.region);
+      setCountry(savedView.country);
+      setType(savedView.type);
+      setSort(savedView.sort);
+      setPage(savedView.page);
+      setQuery(savedView.query);
+      setSubmittedQuery(savedView.query);
+    }
+    urlHydrated.current = true;
+  }, []);
+
+  useEffect(() => {
+    if (!urlHydrated.current || typeof window === "undefined") return;
+    const params = new URLSearchParams();
+    params.set("region", region);
+    params.set("country", country);
+    params.set("type", type);
+    if (sort !== "default") params.set("sort", sort);
+    if (page > 1) params.set("page", String(page));
+    if (submittedQuery) params.set("q", submittedQuery);
+    const queryString = params.toString();
+    window.history.replaceState(null, "", queryString ? `${window.location.pathname}?${queryString}` : window.location.pathname);
+  }, [region, country, type, sort, page, submittedQuery]);
   // Nigeria is the only African news source available, so Region: Africa always
   // means the NG feed regardless of the Country sub-choice.
   const isNg = region === "Africa";
@@ -367,13 +435,34 @@ export default function MarketsPage() {
     touchX.current = null;
   }
 
-  const live = { indices, currencies, commodities, crypto, etfs, mutualFunds };
+  useEffect(() => {
+    let cancelled = false;
+    if (!isNg) {
+      setNgCurrencies([]);
+      setNgForexLoading(false);
+      return undefined;
+    }
+    setNgForexLoading(true);
+    fetchNgForexRates()
+      .then((payload) => { if (!cancelled) setNgCurrencies(mapNgForex(payload)); })
+      .catch(() => { if (!cancelled) setNgCurrencies([]); })
+      .finally(() => { if (!cancelled) setNgForexLoading(false); });
+    return () => { cancelled = true; };
+  }, [isNg]);
+
+  const live = { indices, currencies, ngCurrencies, commodities, crypto, etfs, mutualFunds };
   const searched = { stocks: searchedStocks };
 
   const stocks = getAllLiveStocks();
   const types = getInstrumentTypes(region);
   const isIndex = type === "Indices";
-  const clickable = type === "Stocks";
+  const clickable = type === "Stocks" || (type === "Indices" && region === "Africa") || (type === "Currencies" && region === "Africa");
+
+  function getDetailHref(item) {
+    const asset = item.assetType || "stock";
+    const identifier = asset === "ng_forex" ? item.source : item.ticker;
+    return `/stock/${encodeURIComponent(identifier)}?asset=${asset}`;
+  }
 
   let items = getInstruments(region, type, stocks, live, searched, submittedQuery);
   const nameOf = (item) => (isIndex ? item.name : item.ticker);
@@ -385,10 +474,32 @@ export default function MarketsPage() {
   const currentPage = Math.min(page, pageCount);
   const pageItems = items.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
+  useEffect(() => {
+    if (!clickable || pageItems.length === 0) return undefined;
+    let cancelled = false;
+    const visibleItems = pageItems.filter((item) => item.assetType === "ng_index" || item.assetType === "ng_forex" || item.market === "NGX");
+    Promise.all(visibleItems.map(async (item) => {
+      try {
+        const payload = item.assetType === "ng_index"
+          ? await fetchNgIndexChart(item.ticker, { period: "30d" })
+          : item.assetType === "ng_forex"
+            ? await fetchNgForexChart(item.source, item.target, { period: "30d" })
+            : await fetchNgCompanyChart(item.ticker, { period: "30d" });
+        return [item.ticker, payload?.data || []];
+      } catch (error) {
+        return [item.ticker, []];
+      }
+    })).then((entries) => {
+      if (cancelled) return;
+      setPreviewHistory((current) => ({ ...current, ...Object.fromEntries(entries) }));
+    });
+    return () => { cancelled = true; };
+  }, [clickable, type, region, currentPage, sort, submittedQuery, pageItems.length]);
+
   function handleRegionChange(v) {
     setRegion(v);
     setCountry(v === "Africa" ? "Nigeria" : "All");
-    setType(getInstrumentTypes(v)[0]);
+    setType("Stocks");
     setPage(1);
     setQuery("");
     setSubmittedQuery("");
@@ -434,7 +545,7 @@ export default function MarketsPage() {
   const typeLoading = {
     Indices: indicesLoading,
     Stocks: stocksLoading,
-    Currencies: globalLoading,
+    Currencies: region === "Africa" ? ngForexLoading : globalLoading,
     Commodities: globalLoading,
     Cryptocurrency: globalLoading,
     ETFs: globalLoading,
@@ -449,9 +560,9 @@ export default function MarketsPage() {
 
   return (
     <>
-      <PageFrame>
+      <PageFrame className={"iv-markets-page" + (type === "Stocks" ? " stock-layout" : "")}>
 
-        <div className="iv-filter-bar">
+        <div className="iv-filter-bar iv-market-filter">
           <Select compact label="Region" value={region} onChange={handleRegionChange} options={REGIONS} />
           {region === "Africa" && (
             <Select compact label="Country" value={country} onChange={setCountry} options={AFRICA_COUNTRIES} />
@@ -557,8 +668,8 @@ export default function MarketsPage() {
             </div>
           </div>
         )}
-        <div className="iv-panel">
-          <div className="iv-panel-head"><h3>{region === "Africa" && country !== "All" ? country : region} &middot; {type}</h3></div>
+        <div className="iv-panel iv-market-summary">
+          <div className="iv-panel-head"><h3>{type === "Stocks" && region === "Africa" && country === "Nigeria" ? "Nigeria Stocks" : `${region === "Africa" && country !== "All" ? country : region} · ${type}`}</h3></div>
           <p className="iv-sub" style={{ marginBottom: 16 }}>
             {type} in {region === "Africa" && country !== "All" ? country : region} {avgChange >= 0 ? "are broadly higher" : "are broadly lower"} right now, averaging {avgChange >= 0 ? "+" : ""}{avgChange.toFixed(2)}% across {items.length} tracked instrument{items.length === 1 ? "" : "s"}.
           </p>
@@ -587,7 +698,7 @@ export default function MarketsPage() {
         </div>
 
 
-        <div className="iv-panel">
+        <div className="iv-panel iv-market-list">
           <div className="iv-table-wrap">
             <table className="iv-table">
               <thead>
@@ -596,7 +707,7 @@ export default function MarketsPage() {
                   <th className="iv-col-hide-mobile">{isIndex ? "Region" : "Detail"}</th>
                   <th>{isIndex ? "Value" : "Price"}</th>
                   <th>Change</th>
-                  {!isIndex && <th className="iv-col-hide-mobile">Trend</th>}
+                  <th className="iv-col-hide-mobile">Trend</th>
                 </tr>
               </thead>
               <tbody>
@@ -604,7 +715,7 @@ export default function MarketsPage() {
                   <tr
                     key={isIndex ? item.name : item.ticker}
                     style={{ cursor: clickable ? "pointer" : "default" }}
-                    onClick={() => { if (clickable) router.push("/stock/" + item.ticker); }}
+                    onClick={() => { if (clickable) router.push(getDetailHref(item)); }}
                   >
                     <td>
                       {isIndex
@@ -617,7 +728,11 @@ export default function MarketsPage() {
                       {item.changePct >= 0 ? <ArrowUpRight size={13} /> : <ArrowDownRight size={13} />}
                       {Math.abs(item.changePct).toFixed(2)}%
                     </td>
-                    {!isIndex && <td className="iv-col-hide-mobile"><TrendIndicator changePct={item.changePct} /></td>}
+                    <td className="iv-col-hide-mobile">
+                      {(previewHistory[item.ticker] || item.history || []).length > 1
+                        ? <Sparkline data={previewHistory[item.ticker] || item.history} positive={item.changePct >= 0} />
+                        : <span className="iv-sub">No preview</span>}
+                    </td>
                   </tr>
                 ))}
                 {showLoading && (
@@ -630,7 +745,7 @@ export default function MarketsPage() {
                 )}
                 {!showLoading && pageItems.length === 0 && (
                   <tr>
-                    <td colSpan={isIndex ? 4 : 5} className="iv-empty-sm">
+                    <td colSpan={5} className="iv-empty-sm">
                       {query ? `No ${type.toLowerCase()} match "${query}".` : `No ${type.toLowerCase()} tracked for ${region} yet.`}
                     </td>
                   </tr>

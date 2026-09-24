@@ -1,5 +1,7 @@
 "use client";
 import Link from "next/link";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { BellRing, Settings, LogOut, ChevronRight } from "lucide-react";
 import { useStore } from "@/lib/store";
 import PageFrame from "@/components/PageFrame";
@@ -20,7 +22,16 @@ const GROUPS = [
 ];
 
 export default function MorePage() {
-  const { logout } = useStore();
+  const { state, logout } = useStore();
+  const router = useRouter();
+  const [loggingOut, setLoggingOut] = useState(false);
+
+  async function handleLogout() {
+    if (loggingOut) return;
+    setLoggingOut(true);
+    await logout();
+    router.replace("/dashboard");
+  }
 
   return (
     <>
@@ -44,10 +55,12 @@ export default function MorePage() {
           </div>
         ))}
 
-        <button className="iv-more-row iv-more-signout" onClick={logout}>
-          <span className="iv-more-row-icon"><LogOut size={17} /></span>
-          <span className="iv-more-row-label">Sign out</span>
-        </button>
+        {state.user && (
+          <button className="iv-more-row iv-more-signout" onClick={handleLogout} disabled={loggingOut}>
+            <span className="iv-more-row-icon"><LogOut size={17} /></span>
+            <span className="iv-more-row-label">{loggingOut ? "Signing out..." : "Sign out"}</span>
+          </button>
+        )}
       </PageFrame>
     </>
   );

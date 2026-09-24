@@ -41,7 +41,7 @@ export function AuthGateProvider({ children }) {
               <h3>Log in required</h3>
               <Lock size={16} className="muted" style={{ flexShrink: 0 }} />
             </div>
-            <div className="iv-auth-features">
+            <div className="iv-auth-features" style={{ marginTop: 20 }}>
               <div className="iv-auth-feature">
                 <BellRing size={16} aria-hidden="true" />
                 <span>Get notified when prices move</span>

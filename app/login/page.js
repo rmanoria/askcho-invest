@@ -90,6 +90,7 @@ export default function LoginPage() {
         </div>
 
         <form onSubmit={submit}>
+          {error && <p className="iv-empty-sm" style={{ margin: "0 0 12px", }}>{error}</p>}
           <label className="iv-field">
             <span>Email</span>
             <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@email.com" required />
@@ -106,7 +107,7 @@ export default function LoginPage() {
           <div className="iv-forgot-row">
             <Link href="/forgot-password" className="iv-link-btn">Forgot password?</Link>
           </div>
-          {error && <p className="iv-empty-sm" style={{ margin: "0 0 12px" }}>{error}</p>}
+
           <button type="submit" className="iv-btn-primary full" disabled={submitting || googleSubmitting}>
             {submitting ? "Signing in..." : "Sign in"}
           </button>

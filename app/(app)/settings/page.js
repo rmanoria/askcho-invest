@@ -1,14 +1,17 @@
 "use client";
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Settings as SettingsIcon } from "lucide-react";
 import { useStore } from "@/lib/store";
 import PageFrame from "@/components/PageFrame";
 
 export default function SettingsPage() {
   const { state, logout, updateProfile } = useStore();
+  const router = useRouter();
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [editing, setEditing] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
 
   useEffect(() => {
     const parts = (state.user?.name || "").trim().split(/\s+/);
@@ -20,6 +23,13 @@ export default function SettingsPage() {
     event.preventDefault();
     const saved = await updateProfile(firstName.trim(), lastName.trim());
     if (saved) setEditing(false);
+  }
+
+  async function handleLogout() {
+    if (loggingOut) return;
+    setLoggingOut(true);
+    await logout();
+    router.replace("/dashboard");
   }
 
   return (
@@ -46,7 +56,9 @@ export default function SettingsPage() {
           </form>
           {!editing && <button className="iv-btn-ghost" type="button" onClick={() => setEditing(true)}>Edit profile</button>}
           <div style={{ borderTop: "1px solid var(--line)", marginTop: 20, paddingTop: 16 }}>
-            <button className="iv-btn-danger" onClick={logout}>Log out</button>
+            <button className="iv-btn-danger" onClick={handleLogout} disabled={loggingOut}>
+              {loggingOut ? "Logging out..." : "Log out"}
+            </button>
           </div>
         </div>
 

@@ -1078,6 +1078,58 @@ a {
   margin-top: auto;
 }
 
+.iv-stock-tabs {
+  margin-top: 4px;
+}
+
+.iv-stock-tab-content.tab-profile,
+.iv-stock-tab-content.tab-news {
+  display: block;
+}
+
+.iv-stock-tab-content.tab-profile>div:first-child,
+.iv-stock-tab-content.tab-news>div:first-child .iv-stock-summary-panel,
+.iv-stock-tab-content.tab-news>div:first-child .iv-stock-profile-panel,
+.iv-stock-tab-content.tab-profile .iv-stock-summary-panel,
+.iv-stock-tab-content.tab-profile .iv-stock-news-panel,
+.iv-stock-tab-content.tab-news .iv-col-stack {
+  display: none;
+}
+
+.iv-stock-tab-content.tab-profile .iv-col-stack {
+  display: block;
+}
+
+.iv-stock-tab-content.tab-profile .iv-stock-profile-panel,
+.iv-stock-tab-content.tab-news .iv-stock-news-panel {
+  display: block;
+}
+
+.iv-stock-tab-content.tab-news>div:first-child {
+  display: block;
+}
+
+.iv-markets-page.stock-layout {
+  display: flex;
+  flex-direction: column;
+}
+
+.iv-markets-page.stock-layout .iv-market-filter {
+  order: 1;
+}
+
+.iv-markets-page.stock-layout .iv-market-summary {
+  order: 2;
+}
+
+.iv-markets-page.stock-layout .iv-insight-panel {
+  order: 3;
+}
+
+.iv-markets-page.stock-layout .iv-market-list {
+  order: 4;
+}
+
 .iv-panel {
   background: var(--surface);
   border: 1px solid var(--line);

@@ -1,13 +1,14 @@
 "use client";
 import { useState, useEffect } from "react";
 import { ExternalLink, Loader2 } from "lucide-react";
-import { getGlobalNews, getNgNews, hoursAgo } from "@/lib/news";
+import { getGlobalNews, getNgNews, relativeTime } from "@/lib/news";
 import { useStore } from "@/lib/store";
 import { NIGERIA_NEWS_CATEGORIES } from "@/lib/api";
 import PageFrame from "@/components/PageFrame";
 import Select from "@/components/Select";
 import SkeletonHero from "@/components/SkeletonHero";
 import SkeletonCard from "@/components/SkeletonCard";
+import NewsSummary from "@/components/NewsSummary";
 
 // Category tabs, each wired to a real backend source (forex isn't surfaced as
 // a quick tab, same as on the Dashboard \u2014 it's still reachable, just not one of these).
@@ -101,8 +102,8 @@ export default function NewsPage() {
               <span className="iv-sub">{hero.source} <ExternalLink size={12} /></span>
             </div>
             <h3>{hero.headline}</h3>
-            {hero.summary && <p className="iv-sub" style={{ marginTop: 6 }}>{hero.summary}</p>}
-            <div className="iv-sub">{hoursAgo(hero.datetime)}h ago</div>
+            {hero.summary && <NewsSummary className="iv-sub" style={{ marginTop: 6 }}>{hero.summary}</NewsSummary>}
+            <div className="iv-sub">{relativeTime(hero.datetime)} ago</div>
           </a>
         )}
 
@@ -112,9 +113,9 @@ export default function NewsPage() {
               <a key={n.id} className="iv-news-card" href={n.url} target="_blank">
                 {n.image && <div className="iv-news-card-image" style={{ backgroundImage: `url(${n.image}` }} />}
                 <div className="iv-news-card-body">
-                  <div className="iv-news-card-meta"><span>{n.source}</span><span>{hoursAgo(n.datetime)}h ago</span></div>
+                  <div className="iv-news-card-meta"><span>{n.source}</span><span>{relativeTime(n.datetime)} ago</span></div>
                   <div className="iv-news-headline">{n.headline}</div>
-                  {n.summary && <p className="iv-news-card-summary">{n.summary}</p>}
+                  {n.summary && <NewsSummary className="iv-news-card-summary">{n.summary}</NewsSummary>}
                 </div>
                 <ExternalLink size={14} className="muted iv-news-card-icon" />
               </a>

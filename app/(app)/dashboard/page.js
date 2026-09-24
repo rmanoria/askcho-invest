@@ -15,6 +15,7 @@ import Select from "@/components/Select";
 import SkeletonStat from "@/components/SkeletonStat";
 import SkeletonTableRow from "@/components/SkeletonTableRow";
 import SkeletonHero from "@/components/SkeletonHero";
+import NewsSummary from "@/components/NewsSummary";
 import { useAuthGate } from "@/components/AuthGate";
 
 
@@ -41,7 +42,7 @@ const NIGERIA_NEWS_TABS = [
 ];
 
 
-function normalizeIndices(payload = []) {
+function normalizeIndices(payload = [], assetType = null) {
   const items = Array.isArray(payload)
     ? payload
     : Array.isArray(payload?.data?.data)
@@ -69,9 +70,11 @@ function normalizeIndices(payload = []) {
 
     return {
       name: item.index_name || item.index || item.name || item.Symbol || item.symbol || "Index",
+      ticker: item.symbol || item.Symbol || item.proxy_symbol || "",
       value,
       changePct: Number.isFinite(changePct) ? changePct : 0,
-      history: []
+      history: [],
+      assetType
     };
   });
 }
@@ -145,7 +148,7 @@ export default function DashboardPage() {
       if (cancelled) return;
 
       if (indicesResult.status === "fulfilled") {
-        setNgIndices(normalizeIndices(indicesResult.value));
+        setNgIndices(normalizeIndices(indicesResult.value, isNg ? "ng_index" : null));
       }
 
       setMarketMoversLoading(false);
@@ -216,7 +219,7 @@ export default function DashboardPage() {
                 <div className="iv-home-hero-body">
                   <span className="iv-home-hero-label">{hero.source} <ExternalLink size={12} /></span>
                   <h2>{hero.headline}</h2>
-                  <div className="iv-sub">{hero.summary} </div>
+                  <NewsSummary className="iv-sub">{hero.summary}</NewsSummary>
                 </div>
               </a>
             ) : (
@@ -224,7 +227,7 @@ export default function DashboardPage() {
                 <div className="iv-home-hero-body" style={{ position: "static" }}>
                   <span className="iv-home-hero-label">{hero.source} <ExternalLink size={12} /></span>
                   <h2>{hero.headline}</h2>
-                  <div className="iv-sub">{hero.summary} </div>
+                  <NewsSummary className="iv-sub">{hero.summary}</NewsSummary>
                 </div>
               </a>
             )
@@ -237,7 +240,7 @@ export default function DashboardPage() {
                   {n.image && <div className="iv-news-thumb" style={{ backgroundImage: "url(" + n.image + ")", backgroundSize: "cover", backgroundPosition: "center", backgroundRepeat: "no-repeat" }} />}
                   <div className="iv-news-row-body">
                     <div className="iv-news-headline">{n.headline}</div>
-                    <div className="iv-sub">{n.summary} </div>
+                    <NewsSummary className="iv-sub">{n.summary}</NewsSummary>
                   </div>
                 </a>
               ))}
@@ -264,7 +267,15 @@ export default function DashboardPage() {
               </>
             ) : (
               summaryIndexes.map((ix) => (
-                <div key={ix.name} className="iv-stat">
+                <div
+                  key={ix.ticker || ix.name}
+                  className="iv-stat"
+                  role="link"
+                  tabIndex={ix.assetType ? 0 : undefined}
+                  style={{ cursor: ix.assetType ? "pointer" : "default" }}
+                  onClick={() => { if (ix.assetType) router.push(`/stock/${encodeURIComponent(ix.ticker)}?asset=${ix.assetType}`); }}
+                  onKeyDown={(event) => { if (ix.assetType && (event.key === "Enter" || event.key === " ")) router.push(`/stock/${encodeURIComponent(ix.ticker)}?asset=${ix.assetType}`); }}
+                >
                   <div className="iv-stat-label">{ix.name}</div>
                   <div className="iv-stat-value mono"><FlashValue value={ix.value} render={() => ix.value.toLocaleString(undefined, { maximumFractionDigits: 2 })} /></div>
                   <div className={"iv-chg " + (ix.changePct >= 0 ? "pos" : "neg")}>
