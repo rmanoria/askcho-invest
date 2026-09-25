@@ -1,6 +1,7 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useStore } from "@/lib/store";
 import { Home, BarChart3, Newspaper, Star, Menu, Lightbulb } from "lucide-react";
 
 const TABS = [
@@ -16,10 +17,12 @@ const MORE_ROUTES = ["/more", "/search", "/alerts", "/community", "/settings", "
 
 export default function BottomNav() {
   const pathname = usePathname();
+  const { state } = useStore();
+  const visibleTabs = state.user ? TABS : TABS.filter((tab) => tab.href !== "/more");
 
   return (
     <nav className="iv-bottom-nav">
-      {TABS.map((t) => {
+      {visibleTabs.map((t) => {
         const Icon = t.icon;
         const active = t.href === "/more"
           ? MORE_ROUTES.some((r) => pathname === r || pathname.startsWith(r + "/"))

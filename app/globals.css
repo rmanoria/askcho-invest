@@ -1082,6 +1082,18 @@ a {
   margin-top: 4px;
 }
 
+.iv-stock-profile-panel {
+  order: 2;
+}
+
+.iv-stock-news-panel {
+  order: 3;
+}
+
+.iv-stock-alert-panel {
+  order: 4;
+}
+
 .iv-stock-tab-content.tab-profile,
 .iv-stock-tab-content.tab-news {
   display: block;

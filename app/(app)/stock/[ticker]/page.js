@@ -274,8 +274,7 @@ export default function StockPage() {
 
 
         <div className={"iv-grid-2 iv-stock-tab-content tab-" + activeTab}>
-          <div>
-            <div className="iv-panel iv-stock-summary-panel">
+          <div className="iv-panel iv-stock-summary-panel">
               <div className="iv-panel-head">
                 <div className="iv-company-heading">
                   <div className="iv-company-logo" aria-hidden="true">
@@ -325,25 +324,9 @@ export default function StockPage() {
                 {hasOHLC && <Stat label="Day low" value={formatMoney(s.dayLow, s.currency)} />}
                 {hasOHLC && <Stat label="Open" value={formatMoney(s.openPrice, s.currency)} />}
               </div>
-            </div>
-
-            {isCompany && <div className="iv-panel iv-stock-news-panel">
-              <div className="iv-panel-head"><h3>Market news</h3><Newspaper size={16} className="muted" /></div>
-              <p className="iv-sub" style={{ marginBottom: 10 }}>{isCompany ? (s.market === "NGX" ? "Nigerian company news." : "Company news.") : "News is not available for this market instrument yet."}</p>
-              <div className="iv-notif-list">
-                {marketNews.slice(0, 5).map((n) => (
-                  <a key={n.id} className="iv-notif-item" href={n.url} style={{ display: "block" }} target="_blank" rel="noopener noreferrer">
-                    <div>{n.headline} <ExternalLink size={12} className="muted" /></div>
-                    <div className="iv-sub">{n.source}</div>
-                  </a>
-                ))}
-                {marketNews.length === 0 && <p className="iv-empty-sm">No market news available right now.</p>}
-              </div>
-            </div>}
           </div>
 
-          <div className="iv-col-stack">
-            {isCompany && <div className="iv-panel iv-stock-profile-panel">
+          {isCompany && <div className="iv-panel iv-stock-profile-panel">
               <div className="iv-panel-head"><h3>{isCompany ? "Company profile" : "Market instrument"}</h3></div>
               {!isCompany && <p className="iv-empty-sm">{s.name} is a chartable market instrument. Company profile data is not applicable.</p>}
               {isCompany && profileLoading && <p className="iv-empty-sm">Loading company profile...</p>}
@@ -360,9 +343,9 @@ export default function StockPage() {
 
                 </>
               )}
-            </div>}
+          </div>}
 
-            {isCompany && <div className="iv-panel iv-stock-summary-panel">
+          {isCompany && <div className="iv-panel iv-stock-alert-panel">
               <div className="iv-panel-head"><h3>Price alert</h3><BellRing size={16} className="muted" /></div>
               <form onSubmit={submitAlert}>
                 <div className="iv-form-row">
@@ -381,14 +364,25 @@ export default function StockPage() {
                 </div>
                 <button type="submit" className="iv-btn-primary full">Set alert</button>
               </form>
-            </div>}
-
-            {isCompany && (
-              <button className="iv-btn-ghost full iv-stock-summary-panel" onClick={() => requireAuth(() => toggleWatch(s.ticker))} style={{ marginTop: 0 }}>
+              <button className="iv-btn-ghost full" onClick={() => requireAuth(() => toggleWatch(s.ticker))} style={{ marginTop: 12 }}>
                 <Star size={15} fill={watched ? "#ffffff" : "none"} /> {watched ? "Remove from watchlist" : "Add to watchlist"}
               </button>
-            )}
+          </div>}
+
+          {isCompany && <div className="iv-panel iv-stock-news-panel">
+            <div className="iv-panel-head"><h3>Market news</h3><Newspaper size={16} className="muted" /></div>
+            <p className="iv-sub" style={{ marginBottom: 10 }}>{s.market === "NGX" ? "Nigerian company news." : "Company news."}</p>
+            <div className="iv-notif-list">
+              {marketNews.slice(0, 5).map((n) => (
+                <a key={n.id} className="iv-notif-item" href={n.url} style={{ display: "block" }} target="_blank" rel="noopener noreferrer">
+                  <div>{n.headline} <ExternalLink size={12} className="muted" /></div>
+                  <div className="iv-sub">{n.source}</div>
+                </a>
+              ))}
+              {marketNews.length === 0 && <p className="iv-empty-sm">No market news available right now.</p>}
+            </div>
           </div>
+          }
         </div>
       </PageFrame>
     </>
