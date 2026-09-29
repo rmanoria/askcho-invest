@@ -275,101 +275,101 @@ export default function StockPage() {
 
         <div className={"iv-grid-2 iv-stock-tab-content tab-" + activeTab}>
           <div className="iv-panel iv-stock-summary-panel">
-              <div className="iv-panel-head">
-                <div className="iv-company-heading">
-                  <div className="iv-company-logo" aria-hidden="true">
-                    {companyProfile?.logo_url && !logoError ? (
-                      <img
-                        src={companyProfile.logo_url}
-                        alt=""
-                        onError={() => setLogoError(true)}
-                      />
-                    ) : (
-                      s.ticker.slice(0, 2)
-                    )}
-                  </div>
-                  <div>
-                    <MarketBadge market={s.market} />
-                    <h2 style={{ marginTop: 8 }}>{displayName}</h2>
-                    <span className="mono muted">{s.ticker} &middot; {displaySector}</span>
-                  </div>
+            <div className="iv-panel-head">
+              <div className="iv-company-heading">
+                <div className="iv-company-logo" aria-hidden="true">
+                  {companyProfile?.logo_url && !logoError ? (
+                    <img
+                      src={companyProfile.logo_url}
+                      alt=""
+                      onError={() => setLogoError(true)}
+                    />
+                  ) : (
+                    s.ticker.slice(0, 2)
+                  )}
                 </div>
-                {isCompany && (
-                  <button className="iv-star-btn lg" onClick={() => requireAuth(() => toggleWatch(s.ticker))} aria-label="Toggle watchlist">
-                    <Star size={18} fill={watched ? "#ffffff" : "none"} />
-                  </button>
-                )}
+                <div>
+                  <MarketBadge market={s.market} />
+                  <h2 style={{ marginTop: 8 }}>{displayName}</h2>
+                  <span className="mono muted">{s.ticker} &middot; {displaySector}</span>
+                </div>
               </div>
-              <div className="iv-price-row lg">
-                <span className="iv-price mono"><FlashValue value={s.price} render={() => formatMoney(s.price, s.currency)} /></span>
-                <span className={"iv-chg " + (s.changePct >= 0 ? "pos" : "neg")}>
-                  {s.changePct >= 0 ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />}
-                  {Math.abs(s.changePct).toFixed(2)}%
-                </span>
-              </div>
-              <PriceChart
-                history={usesRemoteChart ? chartHistory : s.history}
-                positive={s.changePct >= 0}
-                currency={s.currency}
-                height={220}
-                period={chartPeriod}
-                loading={usesRemoteChart && chartLoading}
-                error={usesRemoteChart && chartError}
-                onPeriodChange={usesRemoteChart ? setChartPeriod : undefined}
-              />
+              {isCompany && (
+                <button className="iv-star-btn lg" onClick={() => requireAuth(() => toggleWatch(s.ticker))} aria-label="Toggle watchlist">
+                  <Star size={18} fill={watched ? "#ffffff" : "none"} />
+                </button>
+              )}
+            </div>
+            <div className="iv-price-row lg">
+              <span className="iv-price mono"><FlashValue value={s.price} render={() => formatMoney(s.price, s.currency)} /></span>
+              <span className={"iv-chg " + (s.changePct >= 0 ? "pos" : "neg")}>
+                {s.changePct >= 0 ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />}
+                {Math.abs(s.changePct).toFixed(2)}%
+              </span>
+            </div>
+            <PriceChart
+              history={usesRemoteChart ? chartHistory : s.history}
+              positive={s.changePct >= 0}
+              currency={s.currency}
+              height={220}
+              period={chartPeriod}
+              loading={usesRemoteChart && chartLoading}
+              error={usesRemoteChart && chartError}
+              onPeriodChange={usesRemoteChart ? setChartPeriod : undefined}
+            />
 
-              <div className="iv-stat-strip small">
-                <Stat label="Prev close" value={formatMoney(s.prevClose, s.currency)} />
-                {hasOHLC && <Stat label="Day high" value={formatMoney(s.dayHigh, s.currency)} />}
-                {hasOHLC && <Stat label="Day low" value={formatMoney(s.dayLow, s.currency)} />}
-                {hasOHLC && <Stat label="Open" value={formatMoney(s.openPrice, s.currency)} />}
-              </div>
+            <div className="iv-stat-strip small">
+              <Stat label="Prev close" value={formatMoney(s.prevClose, s.currency)} />
+              {hasOHLC && <Stat label="Day high" value={formatMoney(s.dayHigh, s.currency)} />}
+              {hasOHLC && <Stat label="Day low" value={formatMoney(s.dayLow, s.currency)} />}
+              {hasOHLC && <Stat label="Open" value={formatMoney(s.openPrice, s.currency)} />}
+            </div>
           </div>
 
           {isCompany && <div className="iv-panel iv-stock-profile-panel">
-              <div className="iv-panel-head"><h3>{isCompany ? "Company profile" : "Market instrument"}</h3></div>
-              {!isCompany && <p className="iv-empty-sm">{s.name} is a chartable market instrument. Company profile data is not applicable.</p>}
-              {isCompany && profileLoading && <p className="iv-empty-sm">Loading company profile...</p>}
-              {isCompany && !profileLoading && profileError && <p className="iv-empty-sm">Company profile is unavailable right now.</p>}
-              {isCompany && !profileLoading && !profileError && s.market !== "NGX" && <p className="iv-empty-sm">Company profile is unavailable for this market.</p>}
-              {isCompany && !profileLoading && !profileError && s.market === "NGX" && companyProfile && (
-                <>
-                  {(companyProfile.sub_sector || companyProfile.market_classification || companyProfile.nature_of_business) && (
-                    <p className="iv-sub" style={{ marginTop: 14 }}>
-                      {[companyProfile.sub_sector, companyProfile.market_classification, companyProfile.nature_of_business].filter(Boolean).join(" · ")}
-                    </p>
-                  )}
-                  {profileStats.length > 0 && <div className="iv-stat-strip small iv-profile-stats">{profileStats.map(([label, value]) => <Stat key={label} label={label} value={value} />)}</div>}
+            <div className="iv-panel-head"><h3>{isCompany ? "Company profile" : "Market instrument"}</h3></div>
+            {!isCompany && <p className="iv-empty-sm">{s.name} is a chartable market instrument. Company profile data is not applicable.</p>}
+            {isCompany && profileLoading && <p className="iv-empty-sm">Loading company profile...</p>}
+            {isCompany && !profileLoading && profileError && <p className="iv-empty-sm">Company profile is unavailable right now.</p>}
+            {isCompany && !profileLoading && !profileError && s.market !== "NGX" && <p className="iv-empty-sm">Company profile is unavailable for this market.</p>}
+            {isCompany && !profileLoading && !profileError && s.market === "NGX" && companyProfile && (
+              <>
+                {(companyProfile.sub_sector || companyProfile.market_classification || companyProfile.nature_of_business) && (
+                  <p className="iv-sub" style={{ marginTop: 14 }}>
+                    {[companyProfile.sub_sector, companyProfile.market_classification, companyProfile.nature_of_business].filter(Boolean).join(" · ")}
+                  </p>
+                )}
+                {profileStats.length > 0 && <div className="iv-stat-strip small iv-profile-stats">{profileStats.map(([label, value]) => <Stat key={label} label={label} value={value} />)}</div>}
 
-                </>
-              )}
+              </>
+            )}
           </div>}
 
           {isCompany && <div className="iv-panel iv-stock-alert-panel">
-              <div className="iv-panel-head"><h3>Price alert</h3><BellRing size={16} className="muted" /></div>
-              <form onSubmit={submitAlert}>
-                <div className="iv-form-row">
-                  <label className="iv-field">
-                    <span>Condition</span>
-                    <Select
-                      value={alertCondition}
-                      onChange={setAlertCondition}
-                      options={[{ value: "above", label: "Rises above" }, { value: "below", label: "Falls below" }]}
-                    />
-                  </label>
-                  <label className="iv-field">
-                    <span>Target price ({s.currency})</span>
-                    <input type="number" step="0.01" min="0" value={alertPrice} onChange={(e) => setAlertPrice(e.target.value)} placeholder={s.price.toFixed(2)} />
-                  </label>
-                </div>
-                <button type="submit" className="iv-btn-primary full">Set alert</button>
-              </form>
-              <button className="iv-btn-ghost full" onClick={() => requireAuth(() => toggleWatch(s.ticker))} style={{ marginTop: 12 }}>
-                <Star size={15} fill={watched ? "#ffffff" : "none"} /> {watched ? "Remove from watchlist" : "Add to watchlist"}
-              </button>
+            <div className="iv-panel-head"><h3>Price alert</h3><BellRing size={16} className="muted" /></div>
+            <form onSubmit={submitAlert}>
+              <div className="iv-form-row">
+                <label className="iv-field">
+                  <span>Condition</span>
+                  <Select
+                    value={alertCondition}
+                    onChange={setAlertCondition}
+                    options={[{ value: "above", label: "Rises above" }, { value: "below", label: "Falls below" }]}
+                  />
+                </label>
+                <label className="iv-field">
+                  <span>Target price ({s.currency})</span>
+                  <input type="number" step="0.01" min="0" value={alertPrice} onChange={(e) => setAlertPrice(e.target.value)} placeholder={s.price.toFixed(2)} />
+                </label>
+              </div>
+              <button type="submit" className="iv-btn-primary full">Set alert</button>
+            </form>
+            <button className="iv-btn-ghost full" onClick={() => requireAuth(() => toggleWatch(s.ticker))} style={{ marginTop: 12 }}>
+              <Star size={15} fill={watched ? "#ffffff" : "none"} /> {watched ? "Remove from watchlist" : "Add to watchlist"}
+            </button>
           </div>}
 
-          {isCompany && <div className="iv-panel iv-stock-news-panel">
+          {/** isCompany && <div className="iv-panel iv-stock-news-panel">
             <div className="iv-panel-head"><h3>Market news</h3><Newspaper size={16} className="muted" /></div>
             <p className="iv-sub" style={{ marginBottom: 10 }}>{s.market === "NGX" ? "Nigerian company news." : "Company news."}</p>
             <div className="iv-notif-list">
@@ -382,7 +382,7 @@ export default function StockPage() {
               {marketNews.length === 0 && <p className="iv-empty-sm">No market news available right now.</p>}
             </div>
           </div>
-          }
+          */}
         </div>
       </PageFrame>
     </>
