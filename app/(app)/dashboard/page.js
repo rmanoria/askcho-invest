@@ -4,7 +4,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowUpRight, ArrowDownRight, ChevronRight, Plus, ExternalLink } from "lucide-react";
 import { useStore } from "@/lib/store";
-import { fetchGlobalMovers, fetchNgMovers, fetchNgIndices, fetchGlobalIndices } from "@/lib/api";
+import { readQueryParam, replaceQueryParams } from "@/lib/view-state";
+import { fetchGlobalMovers, fetchNgMovers, fetchNgIndices, fetchGlobalIndices, NIGERIA_NEWS_CATEGORIES } from "@/lib/api";
 import { getGlobalNews, getNgNews, hoursAgo } from "@/lib/news";
 import { formatMoney } from "@/lib/format";
 import PageFrame from "@/components/PageFrame";
@@ -31,15 +32,20 @@ const GLOBAL_NEWS_TABS = [
   { id: "crypto", label: "Cryptocurrency", short: "Crypto", source: "crypto" },
 ];
 
-const NIGERIA_NEWS_TABS = [
-  { id: "markets", label: "Markets", short: "Markets", source: "markets" },
-  { id: "corporate-news", label: "Corporate", short: "Corporate", source: "corporate-news" },
-  { id: "economy", label: "Economy", short: "Economy", source: "economy" },
-  { id: "industries", label: "Industries", short: "Industries", source: "industries" },
-  { id: "technology", label: "Technology", short: "Technology", source: "technology" },
-  { id: "personal-finance", label: "Personal Finance", short: "Finance", source: "personal-finance" },
-  { id: "product-updates", label: "Product Updates", short: "Updates", source: "product-updates" }
-];
+const NIGERIA_NEWS_TABS = NIGERIA_NEWS_CATEGORIES.map((category) => ({
+  id: category.id,
+  label: category.label,
+  source: category.id
+}));
+
+function defaultDashboardTab(region) {
+  return region === "Africa" ? NIGERIA_NEWS_TABS[0].id : GLOBAL_NEWS_TABS[0].id;
+}
+
+function truncateNewsSummary(summary = "") {
+  const text = String(summary);
+  return `${text.split("\n\n")[0]}`;
+}
 
 
 function normalizeIndices(payload = [], assetType = null) {
@@ -97,11 +103,12 @@ function normalizeNgMovers(payload) {
 }
 
 export default function DashboardPage() {
-  const { state, region, setRegion, getAllLiveStocks, getFeaturedLiveStocks, toggleWatch, addAlert } = useStore();
+  const { state, region: storeRegion, setRegion, getAllLiveStocks, getFeaturedLiveStocks, toggleWatch, addAlert } = useStore();
   const { requireAuth } = useAuthGate();
   const router = useRouter();
 
-  const [newsTab, setNewsTab] = useState("markets");
+  const [region, setPageRegion] = useState(storeRegion);
+  const [newsTab, setNewsTab] = useState(() => defaultDashboardTab(storeRegion));
   const [newsCountry, setNewsCountry] = useState("Nigeria");
   const [news, setNews] = useState([]);
   const [newsLoading, setNewsLoading] = useState(true);
@@ -109,10 +116,29 @@ export default function DashboardPage() {
   const [watchModalStock, setWatchModalStock] = useState(null);
   const [ngIndices, setNgIndices] = useState([]);
   const [marketMoversLoading, setMarketMoversLoading] = useState(true);
+  const [urlHydrated, setUrlHydrated] = useState(false);
   const isNg = region === "Africa";
+
+  useEffect(() => {
+    const savedRegion = readQueryParam("region");
+    const nextRegion = NEWS_REGIONS.includes(savedRegion) ? savedRegion : storeRegion;
+    const categories = nextRegion === "Africa" ? NIGERIA_NEWS_TABS : GLOBAL_NEWS_TABS;
+    const savedTab = readQueryParam("category");
+    setPageRegion(nextRegion);
+    setRegion(nextRegion);
+    setNewsTab(categories.some((tab) => tab.id === savedTab) ? savedTab : defaultDashboardTab(nextRegion));
+    setNewsCountry(AFRICA_COUNTRIES.includes(readQueryParam("country")) ? readQueryParam("country") : "Nigeria");
+    setUrlHydrated(true);
+  }, []);
+
+  useEffect(() => {
+    if (!urlHydrated) return;
+    replaceQueryParams({ region, category: newsTab, country: isNg ? newsCountry : null });
+  }, [urlHydrated, region, newsTab, newsCountry, isNg]);
 
 
   useEffect(() => {
+    if (!urlHydrated) return undefined;
     let cancelled = false;
     setNewsLoading(true);
     setNewsError(false);
@@ -130,7 +156,7 @@ export default function DashboardPage() {
       .catch(() => { if (!cancelled) setNewsError(true); })
       .finally(() => { if (!cancelled) setNewsLoading(false); });
     return () => { cancelled = true; };
-  }, [newsTab, isNg]);
+  }, [newsTab, isNg, urlHydrated]);
 
 
 
@@ -166,6 +192,13 @@ export default function DashboardPage() {
   const [hero, ...restNews] = news;
   const newsCards = restNews.slice(0, 3);
 
+  function handleRegionChange(value) {
+    setPageRegion(value);
+    setRegion(value);
+    setNewsCountry("Nigeria");
+    setNewsTab(defaultDashboardTab(value));
+  }
+
 
 
   return (
@@ -173,7 +206,7 @@ export default function DashboardPage() {
       <PageFrame>
 
         <div className="iv-filter-bar">
-          <Select compact label="Region" value={region} onChange={(v) => { setRegion(v); setNewsCountry("Nigeria"); setNewsTab("general"); }} options={NEWS_REGIONS} />
+          <Select compact label="Region" value={region} onChange={handleRegionChange} options={NEWS_REGIONS} />
           {region === "Africa" && (
             <Select compact label="Country" value={newsCountry} onChange={setNewsCountry} options={AFRICA_COUNTRIES} />
           )}
@@ -219,7 +252,7 @@ export default function DashboardPage() {
                 <div className="iv-home-hero-body">
                   <span className="iv-home-hero-label">{hero.source} <ExternalLink size={12} /></span>
                   <h2>{hero.headline}</h2>
-                  <NewsSummary className="iv-sub">{hero.summary}</NewsSummary>
+                  <NewsSummary className="iv-sub">{truncateNewsSummary(hero.summary)}</NewsSummary>
                 </div>
               </a>
             ) : (
@@ -227,7 +260,7 @@ export default function DashboardPage() {
                 <div className="iv-home-hero-body" style={{ position: "static" }}>
                   <span className="iv-home-hero-label">{hero.source} <ExternalLink size={12} /></span>
                   <h2>{hero.headline}</h2>
-                  <NewsSummary className="iv-sub">{hero.summary}</NewsSummary>
+                  <NewsSummary className="iv-sub">{truncateNewsSummary(hero.summary)}</NewsSummary>
                 </div>
               </a>
             )
@@ -240,7 +273,7 @@ export default function DashboardPage() {
                   {n.image && <div className="iv-news-thumb" style={{ backgroundImage: "url(" + n.image + ")", backgroundSize: "cover", backgroundPosition: "center", backgroundRepeat: "no-repeat" }} />}
                   <div className="iv-news-row-body">
                     <div className="iv-news-headline">{n.headline}</div>
-                    <NewsSummary className="iv-sub">{n.summary}</NewsSummary>
+                    <NewsSummary className="iv-sub">{truncateNewsSummary(n.summary)}</NewsSummary>
                   </div>
                 </a>
               ))}

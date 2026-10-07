@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { Search as SearchIcon, Star, Newspaper, ExternalLink } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { MARKETS } from "@/lib/stocks";
+import { readQueryParam, replaceQueryParams } from "@/lib/view-state";
 import { getGlobalNews, relativeTime } from "@/lib/news";
 import { formatMoney } from "@/lib/format";
 import PageFrame from "@/components/PageFrame";
@@ -18,9 +19,22 @@ export default function SearchPage() {
   const router = useRouter();
   const [q, setQ] = useState("");
   const [market, setMarket] = useState("ALL");
+  const [urlHydrated, setUrlHydrated] = useState(false);
   const [news, setNews] = useState([]);
   const stocks = getAllLiveStocks();
   const needle = q.trim().toLowerCase();
+
+  useEffect(() => {
+    const savedMarket = readQueryParam("market");
+    setQ(readQueryParam("q") || "");
+    setMarket(savedMarket === "ALL" || MARKETS.includes(savedMarket) ? savedMarket : "ALL");
+    setUrlHydrated(true);
+  }, []);
+
+  useEffect(() => {
+    if (!urlHydrated) return;
+    replaceQueryParams({ q, market: market === "ALL" ? null : market });
+  }, [urlHydrated, q, market]);
 
   // Real news has no search endpoint, so we search within the general category feed.
   useEffect(() => {

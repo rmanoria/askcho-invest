@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { BellRing } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { formatDateTime } from "@/lib/format";
+import { readQueryParam, replaceQueryParams } from "@/lib/view-state";
 import PageFrame from "@/components/PageFrame";
 import Select from "@/components/Select";
 
@@ -14,10 +15,23 @@ export default function AlertsPage() {
   const [ticker, setTicker] = useState("");
   const [condition, setCondition] = useState("above");
   const [price, setPrice] = useState("");
+  const [urlHydrated, setUrlHydrated] = useState(false);
 
   useEffect(() => {
-    if (!ticker && stocks.length) setTicker(stocks[0].ticker);
-  }, [stocks, ticker]);
+    setTicker(readQueryParam("ticker") || "");
+    setCondition(readQueryParam("condition") === "below" ? "below" : "above");
+    setUrlHydrated(true);
+  }, []);
+
+  useEffect(() => {
+    if (!urlHydrated) return;
+    if (stocks.length && !stocks.some((stock) => stock.ticker === ticker)) setTicker(stocks[0].ticker);
+  }, [urlHydrated, stocks, ticker]);
+
+  useEffect(() => {
+    if (!urlHydrated) return;
+    replaceQueryParams({ ticker, condition: condition === "above" ? null : condition });
+  }, [urlHydrated, ticker, condition]);
 
   function submit(e) {
     e.preventDefault();

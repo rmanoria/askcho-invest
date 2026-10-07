@@ -4,6 +4,7 @@ import { ExternalLink, Loader2 } from "lucide-react";
 import { getGlobalNews, getNgNews, relativeTime } from "@/lib/news";
 import { useStore } from "@/lib/store";
 import { NIGERIA_NEWS_CATEGORIES } from "@/lib/api";
+import { readPositivePage, readQueryParam, replaceQueryParams } from "@/lib/view-state";
 import PageFrame from "@/components/PageFrame";
 import Select from "@/components/Select";
 import SkeletonHero from "@/components/SkeletonHero";
@@ -29,25 +30,53 @@ const REGIONS = ["Global", "Africa"];
 const AFRICA_COUNTRIES = ["Nigeria"];
 const PAGE_SIZE = 7;
 
+function defaultTab(region) {
+  return region === "Africa" ? NIGERIA_TABS[0].id : GLOBAL_TABS[0].id;
+}
+
 export default function NewsPage() {
   const { state, setRegion } = useStore();
-  const [tab, setTab] = useState(NIGERIA_TABS[0].id);
+  const [region, setPageRegion] = useState(state.region);
+  const [tab, setTab] = useState(() => defaultTab(state.region));
   const [country, setCountry] = useState("Nigeria");
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [page, setPage] = useState(1);
-  const region = state.region;
+  const [urlHydrated, setUrlHydrated] = useState(false);
   // Nigeria is the only African news source available, so Region: Africa always
   // means the NG feed regardless of the Country sub-choice.
   const isNg = region === "Africa";
 
   useEffect(() => {
+    const savedRegion = readQueryParam("region");
+    const nextRegion = REGIONS.includes(savedRegion) ? savedRegion : state.region;
+    const categories = nextRegion === "Africa" ? NIGERIA_TABS : GLOBAL_TABS;
+    const savedTab = readQueryParam("category");
+    setPageRegion(nextRegion);
+    setRegion(nextRegion);
+    setTab(categories.some((item) => item.id === savedTab) ? savedTab : defaultTab(nextRegion));
+    setCountry(AFRICA_COUNTRIES.includes(readQueryParam("country")) ? readQueryParam("country") : "Nigeria");
+    setPage(readPositivePage());
+    setUrlHydrated(true);
+  }, []);
+
+  useEffect(() => {
+    if (!urlHydrated) return;
+    replaceQueryParams({
+      region,
+      country: isNg ? country : null,
+      category: tab,
+      page: page > 1 ? page : null
+    });
+  }, [urlHydrated, region, country, tab, page, isNg]);
+
+  useEffect(() => {
+    if (!urlHydrated) return undefined;
     let cancelled = false;
     setLoading(true);
     setError(false);
     setItems([]);
-    setPage(1);
     const tabs = isNg ? NIGERIA_TABS : GLOBAL_TABS;
     const selectedTab = tabs.find((t) => t.id === tab) || tabs[0];
     const loader = isNg ? getNgNews(selectedTab.source) : getGlobalNews(selectedTab.source);
@@ -56,7 +85,7 @@ export default function NewsPage() {
       .catch(() => { if (!cancelled) setError(true); })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
-  }, [tab, isNg]);
+  }, [tab, isNg, urlHydrated]);
 
   const filtered = items.slice().sort((a, b) => b.datetime - a.datetime);
   const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
@@ -65,16 +94,33 @@ export default function NewsPage() {
 
   const [hero, ...cards] = pageItems;
 
+  useEffect(() => {
+    if (!loading && page !== currentPage) setPage(currentPage);
+  }, [loading, page, currentPage]);
+
+  function handleRegionChange(value) {
+    setPageRegion(value);
+    setRegion(value);
+    setCountry("Nigeria");
+    setTab(defaultTab(value));
+    setPage(1);
+  }
+
+  function handleTabChange(value) {
+    setTab(value);
+    setPage(1);
+  }
+
   return (
     <>
       <PageFrame className="iv-news-view">
 
         <div className="iv-filter-bar">
-          <Select compact label="Region" value={region} onChange={(v) => { setRegion(v); setCountry("Nigeria"); setTab(v === "Africa" ? NIGERIA_TABS[0].id : GLOBAL_TABS[0].id); }} options={REGIONS} />
+          <Select compact label="Region" value={region} onChange={handleRegionChange} options={REGIONS} />
           {region === "Africa" && (
             <Select compact label="Country" value={country} onChange={setCountry} options={AFRICA_COUNTRIES} />
           )}
-          <Select compact label="Category" value={tab} onChange={setTab} options={(isNg ? NIGERIA_TABS : GLOBAL_TABS).map((t) => ({ value: t.id, label: t.label }))} />
+          <Select compact label="Category" value={tab} onChange={handleTabChange} options={(isNg ? NIGERIA_TABS : GLOBAL_TABS).map((t) => ({ value: t.id, label: t.label }))} />
         </div>
 
         {loading && (

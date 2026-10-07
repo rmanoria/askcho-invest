@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft, ArrowUpRight, ArrowDownRight, Star, Newspaper, BellRing, ExternalLink } from "lucide-react";
 import { useStore } from "@/lib/store";
+import { readQueryParam, replaceQueryParams } from "@/lib/view-state";
 import { getNgNews } from "@/lib/news";
 import { fetchGlobalCompanyNews, fetchGlobalStock, fetchNgCompanyChart, fetchNgCompanyProfile, fetchNgForexChart, fetchNgForexRates, fetchNgIndexChart, fetchNgIndices } from "@/lib/api";
 import { formatLargeAmount, formatMoney, formatShares } from "@/lib/format";
@@ -13,6 +14,13 @@ import MarketBadge from "@/components/MarketBadge";
 import FlashValue from "@/components/FlashValue";
 import Select from "@/components/Select";
 import { useAuthGate } from "@/components/AuthGate";
+
+const CHART_PERIODS = ["7d", "30d", "90d", "1y", "5y", "all"];
+
+function readChartPeriod() {
+  const period = readQueryParam("period");
+  return CHART_PERIODS.includes(period) ? period : "30d";
+}
 
 export default function StockPage() {
   const { ticker } = useParams();
@@ -28,6 +36,7 @@ export default function StockPage() {
   const [fallbackLoading, setFallbackLoading] = useState(false);
   const [fallbackError, setFallbackError] = useState(false);
   const [chartPeriod, setChartPeriod] = useState("30d");
+  const [periodHydrated, setPeriodHydrated] = useState(false);
   const [chartHistory, setChartHistory] = useState([]);
   const [chartLoading, setChartLoading] = useState(false);
   const [chartError, setChartError] = useState(false);
@@ -46,7 +55,11 @@ export default function StockPage() {
   const isCompany = detailAsset === "stock";
 
   useEffect(() => {
-    setChartPeriod("30d");
+    setChartPeriod(readChartPeriod());
+    setPeriodHydrated(true);
+  }, []);
+
+  useEffect(() => {
     setChartHistory([]);
     setChartError(false);
     setCompanyProfile(null);
@@ -55,6 +68,11 @@ export default function StockPage() {
     setLogoError(false);
     setActiveTab("summary");
   }, [tickerKey]);
+
+  useEffect(() => {
+    if (!periodHydrated) return;
+    replaceQueryParams({ period: chartPeriod === "30d" ? null : chartPeriod });
+  }, [periodHydrated, chartPeriod]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;

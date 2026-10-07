@@ -33,7 +33,7 @@ export default function RootLayout({ children }) {
     <html lang="en" className={`${spaceGrotesk.variable} ${inter.variable} ${jetbrainsMono.variable}`}>
       <body>
         <StoreProvider>
-          <Splash />
+          {/* <Splash /> */}
           {children}
           <Toast />
         </StoreProvider>

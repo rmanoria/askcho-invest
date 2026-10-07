@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { ArrowUpRight, ArrowDownRight, Search, ChevronRight, ChevronLeft as ChevronLeftIcon } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { formatMoney } from "@/lib/format";
+import { replaceQueryParams } from "@/lib/view-state";
 import PageFrame from "@/components/PageFrame";
 import Sparkline from "@/components/Sparkline";
 import FlashValue from "@/components/FlashValue";
@@ -244,9 +245,12 @@ function readMarketView() {
     ? params.get("country")
     : nextRegion === "Africa" ? "Nigeria" : "All";
   const nextSort = SORTS.some((option) => option.value === params.get("sort")) ? params.get("sort") : "default";
-  const nextPage = Math.max(1, Number.parseInt(params.get("page") || "1", 10) || 1);
+  const parsedPage = Number.parseInt(params.get("page") || "1", 10);
+  const nextPage = Number.isFinite(parsedPage) && parsedPage > 0 ? parsedPage : 1;
   const nextQuery = params.get("q") || "";
-  return { region: nextRegion, country: nextCountry, type: nextType, sort: nextSort, page: nextPage, query: nextQuery };
+  const nextDraftQuery = params.get("draft") ?? nextQuery;
+  const nextInsight = INSIGHT_TABS.some((tab) => tab.id === params.get("insight")) ? params.get("insight") : "gainers";
+  return { region: nextRegion, country: nextCountry, type: nextType, sort: nextSort, page: nextPage, query: nextQuery, draftQuery: nextDraftQuery, insight: nextInsight };
 }
 
 
@@ -259,7 +263,7 @@ export default function MarketsPage() {
   const [page, setPage] = useState(1);
   const [query, setQuery] = useState("");
   const [submittedQuery, setSubmittedQuery] = useState("");
-  const urlHydrated = useRef(false);
+  const [urlHydrated, setUrlHydrated] = useState(false);
 
   const [indices, setIndices] = useState([]);
   const [indicesLoading, setIndicesLoading] = useState(true);
@@ -294,24 +298,26 @@ export default function MarketsPage() {
       setType(savedView.type);
       setSort(savedView.sort);
       setPage(savedView.page);
-      setQuery(savedView.query);
+      setQuery(savedView.draftQuery);
       setSubmittedQuery(savedView.query);
+      setInsightTab(savedView.insight);
     }
-    urlHydrated.current = true;
+    setUrlHydrated(true);
   }, []);
 
   useEffect(() => {
-    if (!urlHydrated.current || typeof window === "undefined") return;
-    const params = new URLSearchParams();
-    params.set("region", region);
-    params.set("country", country);
-    params.set("type", type);
-    if (sort !== "default") params.set("sort", sort);
-    if (page > 1) params.set("page", String(page));
-    if (submittedQuery) params.set("q", submittedQuery);
-    const queryString = params.toString();
-    window.history.replaceState(null, "", queryString ? `${window.location.pathname}?${queryString}` : window.location.pathname);
-  }, [region, country, type, sort, page, submittedQuery]);
+    if (!urlHydrated || typeof window === "undefined") return;
+    replaceQueryParams({
+      region,
+      country,
+      type,
+      sort: sort === "default" ? null : sort,
+      page: page > 1 ? page : null,
+      q: submittedQuery,
+      draft: query === submittedQuery ? null : query,
+      insight: insightTab === "gainers" ? null : insightTab
+    });
+  }, [urlHydrated, region, country, type, sort, page, submittedQuery, query, insightTab]);
   // Nigeria is the only African news source available, so Region: Africa always
   // means the NG feed regardless of the Country sub-choice.
   const isNg = region === "Africa";
@@ -554,6 +560,10 @@ export default function MarketsPage() {
   const waitingOnSearch = isLiveSearchType(type, region) && Boolean(submittedQuery) && searchLoading;
   const showLoading = ((typeLoading[type] ?? false) || waitingOnSearch) && items.length === 0;
 
+  useEffect(() => {
+    if (!showLoading && page !== currentPage) setPage(currentPage);
+  }, [showLoading, page, currentPage]);
+
   // Use real API data, fall back to live stocks if needed
   const gainers = globalGainers.slice(0, 5)
   const losers = globalLosers.slice(0, 5)
@@ -598,8 +608,8 @@ export default function MarketsPage() {
               </div>
             </div>
 
-            <button className="iv-insight-nav-btn edge left" onClick={insightPrev} aria-label="Previous"><ChevronLeftIcon size={17} /></button>
-            <button className="iv-insight-nav-btn edge right" onClick={insightNext} aria-label="Next"><ChevronRight size={17} /></button>
+            {/* <button className="iv-insight-nav-btn edge left" onClick={insightPrev} aria-label="Previous"><ChevronLeftIcon size={17} /></button>
+            <button className="iv-insight-nav-btn edge right" onClick={insightNext} aria-label="Next"><ChevronRight size={17} /></button> */}
 
             <div className="iv-insight-viewport" onTouchStart={onInsightTouchStart} onTouchEnd={onInsightTouchEnd}>
               <div key={insightTab} className={"iv-insight-slide dir-" + insightDir}>
