@@ -247,10 +247,8 @@ function readMarketView() {
   const nextSort = SORTS.some((option) => option.value === params.get("sort")) ? params.get("sort") : "default";
   const parsedPage = Number.parseInt(params.get("page") || "1", 10);
   const nextPage = Number.isFinite(parsedPage) && parsedPage > 0 ? parsedPage : 1;
-  const nextQuery = params.get("q") || "";
-  const nextDraftQuery = params.get("draft") ?? nextQuery;
   const nextInsight = INSIGHT_TABS.some((tab) => tab.id === params.get("insight")) ? params.get("insight") : "gainers";
-  return { region: nextRegion, country: nextCountry, type: nextType, sort: nextSort, page: nextPage, query: nextQuery, draftQuery: nextDraftQuery, insight: nextInsight };
+  return { region: nextRegion, country: nextCountry, type: nextType, sort: nextSort, page: nextPage, insight: nextInsight };
 }
 
 
@@ -262,8 +260,8 @@ export default function MarketsPage() {
   const [sort, setSort] = useState("default");
   const [page, setPage] = useState(1);
   const [query, setQuery] = useState("");
-  const [submittedQuery, setSubmittedQuery] = useState("");
   const [urlHydrated, setUrlHydrated] = useState(false);
+  const searchQuery = query.trim();
 
   const [indices, setIndices] = useState([]);
   const [indicesLoading, setIndicesLoading] = useState(true);
@@ -298,8 +296,6 @@ export default function MarketsPage() {
       setType(savedView.type);
       setSort(savedView.sort);
       setPage(savedView.page);
-      setQuery(savedView.draftQuery);
-      setSubmittedQuery(savedView.query);
       setInsightTab(savedView.insight);
     }
     setUrlHydrated(true);
@@ -313,11 +309,11 @@ export default function MarketsPage() {
       type,
       sort: sort === "default" ? null : sort,
       page: page > 1 ? page : null,
-      q: submittedQuery,
-      draft: query === submittedQuery ? null : query,
+      q: null,
+      draft: null,
       insight: insightTab === "gainers" ? null : insightTab
     });
-  }, [urlHydrated, region, country, type, sort, page, submittedQuery, query, insightTab]);
+  }, [urlHydrated, region, country, type, sort, page, insightTab]);
   // Nigeria is the only African news source available, so Region: Africa always
   // means the NG feed regardless of the Country sub-choice.
   const isNg = region === "Africa";
@@ -400,30 +396,30 @@ export default function MarketsPage() {
 
   useEffect(() => {
     let cancelled = false;
+    if (!searchQuery || !isLiveSearchType(type, region)) {
+      setSearchedStocks(null);
+      setSearchLoading(false);
+      return undefined;
+    }
 
-    async function runLiveSearch() {
-      if (!submittedQuery || !isLiveSearchType(type, region)) {
-        setSearchedStocks(null);
-        return;
-      }
-
-      setSearchLoading(true);
+    setSearchedStocks([]);
+    setSearchLoading(true);
+    const timeout = setTimeout(async () => {
       try {
-        const quote = await fetchGlobalStock(submittedQuery);
-        if (cancelled) return;
-        setSearchedStocks(mapSearchedStock(quote));
+        const quote = await fetchGlobalStock(searchQuery);
+        if (!cancelled) setSearchedStocks(mapSearchedStock(quote));
       } catch (e) {
         if (!cancelled) setSearchedStocks([]);
       } finally {
         if (!cancelled) setSearchLoading(false);
       }
-    }
+    }, 250);
 
-    runLiveSearch();
     return () => {
       cancelled = true;
+      clearTimeout(timeout);
     };
-  }, [submittedQuery, type, region]);
+  }, [searchQuery, type, region]);
 
   function goToInsight(id) {
     const targetIndex = INSIGHT_TABS.findIndex((t) => t.id === id);
@@ -470,14 +466,14 @@ export default function MarketsPage() {
     return `/stock/${encodeURIComponent(identifier)}?asset=${asset}`;
   }
 
-  let items = getInstruments(region, type, stocks, live, searched, submittedQuery);
+  let items = getInstruments(region, type, stocks, live, searched, searchQuery);
   const nameOf = (item) => (isIndex ? item.name : item.ticker);
   if (sort === "change_desc") items = [...items].sort((a, b) => b.changePct - a.changePct);
   else if (sort === "change_asc") items = [...items].sort((a, b) => a.changePct - b.changePct);
   else if (sort === "alpha") items = [...items].sort((a, b) => nameOf(a).localeCompare(nameOf(b)));
 
   const pageCount = Math.max(1, Math.ceil(items.length / PAGE_SIZE));
-  const currentPage = Math.min(page, pageCount);
+  const currentPage = searchQuery ? 1 : Math.min(page, pageCount);
   const pageItems = items.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
   useEffect(() => {
@@ -500,7 +496,7 @@ export default function MarketsPage() {
       setPreviewHistory((current) => ({ ...current, ...Object.fromEntries(entries) }));
     });
     return () => { cancelled = true; };
-  }, [clickable, type, region, currentPage, sort, submittedQuery, pageItems.length]);
+  }, [clickable, type, region, currentPage, sort, searchQuery, pageItems.length]);
 
   function handleRegionChange(v) {
     setRegion(v);
@@ -508,14 +504,12 @@ export default function MarketsPage() {
     setType("Stocks");
     setPage(1);
     setQuery("");
-    setSubmittedQuery("");
   }
 
   function handleTypeChange(v) {
     setType(v);
     setPage(1);
     setQuery("");
-    setSubmittedQuery("");
   }
 
   function handleSortChange(v) {
@@ -526,21 +520,6 @@ export default function MarketsPage() {
   function handleQueryChange(e) {
     if (e.target.value.length > 100) return; // prevent abuse
     setQuery(e.target.value);
-    setPage(1);
-  }
-
-  function handleQueryKeyDown(e) {
-    if (e.key === "Enter") {
-      e.preventDefault();
-      submitSearch();
-    }
-  }
-
-  function submitSearch() {
-    if (query.trim() === submittedQuery) return;
-    const nextQuery = query.trim();
-    setPage(1);
-    setSubmittedQuery(nextQuery);
   }
 
   const avgChange = items.length ? items.reduce((a, i) => a + i.changePct, 0) / items.length : 0;
@@ -557,12 +536,12 @@ export default function MarketsPage() {
     ETFs: globalLoading,
     "Mutual Funds": globalLoading
   };
-  const waitingOnSearch = isLiveSearchType(type, region) && Boolean(submittedQuery) && searchLoading;
+  const waitingOnSearch = isLiveSearchType(type, region) && Boolean(searchQuery) && searchLoading;
   const showLoading = ((typeLoading[type] ?? false) || waitingOnSearch) && items.length === 0;
 
   useEffect(() => {
-    if (!showLoading && page !== currentPage) setPage(currentPage);
-  }, [showLoading, page, currentPage]);
+    if (!searchQuery && !showLoading && page !== currentPage) setPage(currentPage);
+  }, [searchQuery, showLoading, page, currentPage]);
 
   // Use real API data, fall back to live stocks if needed
   const gainers = globalGainers.slice(0, 5)
@@ -580,22 +559,19 @@ export default function MarketsPage() {
           <Select compact label="Type" value={type} onChange={handleTypeChange} options={types} />
           <Select compact label="Sort" value={sort} onChange={handleSortChange} options={SORTS} />
           <div className="iv-search-box">
-            <button type="button" className="iv-search-submit" onClick={submitSearch} aria-label="Search markets" title="Search markets">
-              <Search size={14} />
-            </button>
+            <Search size={14} aria-hidden="true" />
             <input
               type="text"
               className="iv-search-input"
               placeholder={`Search ${type.toLowerCase()}…`}
               value={query}
               onChange={handleQueryChange}
-              onKeyDown={handleQueryKeyDown}
             />
           </div>
         </div>
 
         {/* Market insights \u2014 movers / gainers / losers / calendar as a swipeable 3D card carousel */}
-        {type === "Stocks" && (
+        {!searchQuery && type === "Stocks" && (
           <div className="iv-panel iv-insight-panel">
             <div className="iv-insight-head">
               <div className="iv-news-tabs iv-home-news-tabs">
@@ -678,7 +654,7 @@ export default function MarketsPage() {
             </div>
           </div>
         )}
-        <div className="iv-panel iv-market-summary">
+        {!searchQuery && <div className="iv-panel iv-market-summary">
           <div className="iv-panel-head"><h3>{type === "Stocks" && region === "Africa" && country === "Nigeria" ? "Nigeria Stocks" : `${region === "Africa" && country !== "All" ? country : region} · ${type}`}</h3></div>
           <p className="iv-sub" style={{ marginBottom: 16 }}>
             {type} in {region === "Africa" && country !== "All" ? country : region} {avgChange >= 0 ? "are broadly higher" : "are broadly lower"} right now, averaging {avgChange >= 0 ? "+" : ""}{avgChange.toFixed(2)}% across {items.length} tracked instrument{items.length === 1 ? "" : "s"}.
@@ -705,7 +681,7 @@ export default function MarketsPage() {
               <div className="iv-stat-value mono">{items.length}</div>
             </div>
           </div>
-        </div>
+        </div>}
 
 
         <div className="iv-panel iv-market-list">

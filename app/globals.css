@@ -2407,10 +2407,10 @@ a {
 /* filter bar \u2014 filters surfaced directly at the top as compact pills, static on one line, never scrollable */
 .iv-filter-bar {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 6px;
   margin-bottom: 20px;
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
   position: relative;
   z-index: 3;
   overflow-x: auto;
@@ -2424,6 +2424,21 @@ a {
 
 .iv-filter-bar .iv-select {
   flex: 1 1 0;
+  min-width: 0;
+}
+
+.iv-filter-bar.iv-market-filter {
+  flex-wrap: wrap;
+  overflow: visible;
+}
+
+.iv-market-filter .iv-select {
+  flex: 1 1 100px;
+  min-width: 60px;
+}
+
+.iv-market-filter .iv-search-box {
+  flex: 0 1 220px;
   min-width: 0;
 }
 
@@ -2444,7 +2459,7 @@ a {
     gap: 5px;
   }
 
-  .iv-filter-bar .iv-select {
+  .iv-filter-bar:not(.iv-market-filter) .iv-select {
     flex: 0 0 auto;
   }
 
