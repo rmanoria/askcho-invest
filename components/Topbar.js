@@ -16,8 +16,8 @@ export default function Topbar({ title = "" }) {
       {title && <h1 className="iv-page-title">{title}</h1>}
       <div className="iv-topbar-right">
         <div className="iv-pill"><span className="dot" /><span className="iv-pill-label">Markets live</span></div>
-        <Link href="/search" className="iv-icon-btn" aria-label="Search news, markets, indices and more"><Search size={16} /></Link>
-        <NotificationBell />
+        {/* <Link href="/search" className="iv-icon-btn" aria-label="Search news, markets, indices and more"><Search size={16} /></Link>
+        <NotificationBell /> */}
         <div className="iv-user-chip"><UserIcon size={14} /> {state.user && state.user.name}</div>
       </div>
     </div>
