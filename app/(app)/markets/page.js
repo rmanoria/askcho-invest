@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowUpRight, ArrowDownRight, Search, ChevronRight, ChevronLeft as ChevronLeftIcon } from "lucide-react";
+import { ArrowUpRight, ArrowDownRight, Search, X, ChevronRight, ChevronLeft as ChevronLeftIcon } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { formatMoney } from "@/lib/format";
 import { replaceQueryParams } from "@/lib/view-state";
@@ -260,6 +260,8 @@ export default function MarketsPage() {
   const [sort, setSort] = useState("default");
   const [page, setPage] = useState(1);
   const [query, setQuery] = useState("");
+  const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
+  const mobileSearchInputRef = useRef(null);
   const [urlHydrated, setUrlHydrated] = useState(false);
   const searchQuery = query.trim();
 
@@ -522,6 +524,10 @@ export default function MarketsPage() {
     setQuery(e.target.value);
   }
 
+  useEffect(() => {
+    if (mobileSearchOpen) mobileSearchInputRef.current?.focus();
+  }, [mobileSearchOpen]);
+
   const avgChange = items.length ? items.reduce((a, i) => a + i.changePct, 0) / items.length : 0;
   const best = items.length ? [...items].sort((a, b) => b.changePct - a.changePct)[0] : null;
   const worst = items.length ? [...items].sort((a, b) => a.changePct - b.changePct)[0] : null;
@@ -546,10 +552,45 @@ export default function MarketsPage() {
   // Use real API data, fall back to live stocks if needed
   const gainers = globalGainers.slice(0, 5)
   const losers = globalLosers.slice(0, 5)
+  const renderSearchField = (className = "", inputRef) => (
+    <div className={`iv-search-box ${className}`}>
+      <Search size={14} aria-hidden="true" />
+      <input
+        ref={inputRef}
+        type="text"
+        className="iv-search-input"
+        placeholder={`Search ${type.toLowerCase()}…`}
+        value={query}
+        onChange={handleQueryChange}
+      />
+    </div>
+  );
 
   return (
     <>
-      <PageFrame className={"iv-markets-page" + (type === "Stocks" ? " stock-layout" : "")}>
+      <PageFrame
+        className={"iv-markets-page" + (type === "Stocks" ? " stock-layout" : "")}
+        topbarSearch={renderSearchField("iv-topbar-search-field")}
+        mobileSearchToggle={(
+          <button
+            type="button"
+            className="iv-market-search-toggle"
+            onClick={() => {
+              if (mobileSearchOpen) {
+                setQuery("");
+                setMobileSearchOpen(false);
+              } else {
+                setMobileSearchOpen(true);
+              }
+            }}
+            aria-label={mobileSearchOpen ? "Close market search" : "Open market search"}
+            aria-expanded={mobileSearchOpen}
+            aria-controls="iv-market-mobile-search"
+          >
+            {mobileSearchOpen ? <X size={19} /> : <Search size={19} />}
+          </button>
+        )}
+      >
 
         <div className="iv-filter-bar iv-market-filter">
           <Select compact label="Region" value={region} onChange={handleRegionChange} options={REGIONS} />
@@ -558,17 +599,12 @@ export default function MarketsPage() {
           )}
           <Select compact label="Type" value={type} onChange={handleTypeChange} options={types} />
           <Select compact label="Sort" value={sort} onChange={handleSortChange} options={SORTS} />
-          <div className="iv-search-box">
-            <Search size={14} aria-hidden="true" />
-            <input
-              type="text"
-              className="iv-search-input"
-              placeholder={`Search ${type.toLowerCase()}…`}
-              value={query}
-              onChange={handleQueryChange}
-            />
-          </div>
         </div>
+        {mobileSearchOpen && (
+          <div id="iv-market-mobile-search" className="iv-market-mobile-search">
+            {renderSearchField("", mobileSearchInputRef)}
+          </div>
+        )}
 
         {/* Market insights \u2014 movers / gainers / losers / calendar as a swipeable 3D card carousel */}
         {!searchQuery && type === "Stocks" && (
